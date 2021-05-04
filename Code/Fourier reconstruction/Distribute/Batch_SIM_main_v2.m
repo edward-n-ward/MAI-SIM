@@ -7,22 +7,29 @@ p_num=3;% phase shift times for each pattern orientation
 [files, path] = uigetfile('D:\*.tif','multiselect','on');
 for imFile = 1:length(files) 
 %filepath=fullfile(path,files(imFile));%replace with your file's path
-filepath = strcat(path,files{imFile});
+if isa(files,'char')
+    filepath = strcat(path,files);
+else
+    filepath = strcat(path,files{imFile});
+end
+
 info = imfinfo(filepath);
 n = length(info);
 frames = floor(n/9);
 disp(['Processing stack with ' num2str(frames) ' frames.']);
 for f = 1:frames
     try
+    load = double(imread(filepath,1));
+    [X, Y] = size(load);
+    lim = max(X,Y);    
+    noiseimage = zeros(lim,lim,a_num,p_num);
     for ii=1:a_num
         for jj=1:p_num
             load = double(imread(filepath,((ii-1)*3+jj+9*(f-1))));
-            [X, Y] = size(load);
-            lim = min(X,Y);
-            noiseimage(:,:,ii,jj)=load(1:lim,1:lim);
+            noiseimage(1:X,1:Y,ii,jj)=load;
         end
     end
-    [output] = BatchRecon(path,files{imFile},noiseimage);
+    [output] = BatchRecon(filepath,noiseimage);
     disp(['Modulation depth = ' num2str(output)]);
     disp(['Done frame: ' num2str(f) '/' num2str(frames)]);
     catch
@@ -30,13 +37,11 @@ for f = 1:frames
     end
 end
 end
-function [output] = BatchRecon(path,file,noiseimage)
+function [output] = BatchRecon(filepath,noiseimage)
 %% read image file
 a_num=3;% number of pattern orientations
 p_num=3;% phase shift times for each pattern orientation
 
-
-filepath=fullfile(path,file);%replace with your file's path
 filename='1_X';% the names should be 1_X1, 1_X2, ..., 1_X(a_num*p_num) in this case;
 fileformat='tif';
 
