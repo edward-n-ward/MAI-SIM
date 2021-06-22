@@ -28,8 +28,8 @@ def GetParams():
   # data
   opt.weights = 'C:/Users/SIM_ADMIN/Documents/GitHub/AtheSIM/ML-SIM-inference-for-AtheiSIM/0216_SIMRec_0214_rndAll_rcan_continued.pth' # model to retrain from
   opt.imageSize = 512
-  opt.root = 'D:/SIM_Data/16-06-2021/488mito 561ER 647tubulin/rolling_19/to process'
-  opt.out = 'D:/SIM_Data/16-06-2021/488mito 561ER 647tubulin/rolling_19/results'
+  opt.root = 'D:/SIM_Data/16-06-2021/488mito 561ER 647tubulin/rolling_10/to process'
+  opt.out = 'D:/SIM_Data/16-06-2021/488mito 561ER 647tubulin/rolling_10/results'
 
   # input/output layer options
   opt.norm = 'minmax' # if normalization should not be used
