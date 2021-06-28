@@ -26,24 +26,24 @@ def GetParams():
   opt = argparse.Namespace()
 
   # data
-  opt.weights = 'C:/Users/SIM_ADMIN/Documents/GitHub/AtheSIM/ML-SIM-inference-for-AtheiSIM/0216_SIMRec_0214_rndAll_rcan_continued.pth' # model to retrain from
+  opt.weights = 'D:/ML-SIM/OS-SIM/models/trained 03-01-2021/prelim60.pth' # model to retrain from
   opt.imageSize = 512
-  opt.root = 'D:/SIM_Data/16-06-2021/488mito 561ER 647tubulin/rolling_10/to process'
-  opt.out = 'D:/SIM_Data/16-06-2021/488mito 561ER 647tubulin/rolling_10/results'
+  opt.root = 'D:/Users/SIM_ADMIN/Onedrive/OneDrive - University of Cambridge/OS-SIM test data'
+  opt.out = 'D:/ML-SIM/OS-SIM/results/trained 03-01-2021'
 
   # input/output layer options
   opt.norm = 'minmax' # if normalization should not be used
   opt.task = 'simin_gtout'
   opt.scale = 1
-  opt.nch_in = 9
+  opt.nch_in = 3
   opt.nch_out = 1
 
   # architecture options 
   opt.model='rcan'#'model to use'  
   opt.narch = 0
   opt.n_resgroups = 3
-  opt.n_resblocks = 10
-  opt.n_feats = 48
+  opt.n_resblocks = 2
+  opt.n_feats = 22
   opt.reduction = 16
 
   # test options
@@ -143,10 +143,10 @@ def EvaluateModel(opt):
                 sr_frame = sr.numpy()
                 sr_frame = np.squeeze(sr_frame)                               
 
-            if stack_idx == 0:
-                reference = np.copy(sr_frame)
-            else: 
-                sr_frame = match_histograms(sr_frame,reference)
+            #if stack_idx == 0:
+            #    reference = np.copy(sr_frame)
+            #else: 
+            #    sr_frame = match_histograms(sr_frame,reference)
 
         
 
@@ -155,7 +155,7 @@ def EvaluateModel(opt):
             tifffile.imsave(svPath,wf,append=True)
 
 
-            sr_frame = (sr_frame/np.amax(sr_frame) * 65000).astype('uint16')
+            sr_frame = (sr_frame * 65000).astype('uint16')
             svPath = opt.out + '/' + filename +'_sr.tif'
             tifffile.imsave(svPath,sr_frame,append=True)
 
