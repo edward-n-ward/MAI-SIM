@@ -28,8 +28,13 @@ def GetParams():
   # data
   opt.weights = 'D:/ML-SIM/OS-SIM/models/trained 03-01-2021/prelim60.pth' # model to retrain from
   opt.imageSize = 512
+<<<<<<< Updated upstream
   opt.root = 'D:/Users/SIM_ADMIN/Onedrive/OneDrive - University of Cambridge/OS-SIM test data'
   opt.out = 'D:/ML-SIM/OS-SIM/results/trained 03-01-2021'
+=======
+  opt.root = 'D:/SIM_Data/16-06-2021/488mito 561ER 647tubulin/rolling_10/to process'
+  opt.out = 'D:/SIM_Data/16-06-2021/488mito 561ER 647tubulin/rolling_10/results'
+>>>>>>> Stashed changes
 
   # input/output layer options
   opt.norm = 'minmax' # if normalization should not be used
