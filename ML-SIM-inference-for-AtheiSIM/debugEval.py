@@ -26,15 +26,10 @@ def GetParams():
   opt = argparse.Namespace()
 
   # data
-  opt.weights = 'D:/ML-SIM/OS-SIM/models/trained 03-01-2021/prelim60.pth' # model to retrain from
+  opt.weights = 'D:/ML-SIM/OS-SIM/models/ML-SIMcopy apo/prelim96.pth' # model to retrain from
   opt.imageSize = 512
-<<<<<<< Updated upstream
   opt.root = 'D:/Users/SIM_ADMIN/Onedrive/OneDrive - University of Cambridge/OS-SIM test data'
-  opt.out = 'D:/ML-SIM/OS-SIM/results/trained 03-01-2021'
-=======
-  opt.root = 'D:/SIM_Data/16-06-2021/488mito 561ER 647tubulin/rolling_10/to process'
-  opt.out = 'D:/SIM_Data/16-06-2021/488mito 561ER 647tubulin/rolling_10/results'
->>>>>>> Stashed changes
+  opt.out = 'D:/ML-SIM/OS-SIM/results/ML-SIMcopy apo'
 
   # input/output layer options
   opt.norm = 'minmax' # if normalization should not be used
@@ -47,8 +42,8 @@ def GetParams():
   opt.model='rcan'#'model to use'  
   opt.narch = 0
   opt.n_resgroups = 3
-  opt.n_resblocks = 2
-  opt.n_feats = 22
+  opt.n_resblocks = 10
+  opt.n_feats = 96
   opt.reduction = 16
 
   # test options
