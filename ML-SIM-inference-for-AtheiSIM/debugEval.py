@@ -26,10 +26,10 @@ def GetParams():
   opt = argparse.Namespace()
 
   # data
-  opt.weights = 'D:/ML-SIM/OS-SIM/models/ML-SIMcopy apo/prelim96.pth' # model to retrain from
+  opt.weights = 'D:/ML-SIM/OS-SIM/models/ML-SIMcopy apo/prelim160.pth' # model to retrain from
   opt.imageSize = 512
-  opt.root = 'D:/Users/SIM_ADMIN/Onedrive/OneDrive - University of Cambridge/OS-SIM test data'
-  opt.out = 'D:/ML-SIM/OS-SIM/results/ML-SIMcopy apo'
+  opt.root = 'F:/Users/SIM_Admin/OneDrive - University of Cambridge/OS-SIM test data'
+  opt.out = 'F:/ML_SIM/OS-SIM/results/ML-SIMcopy apo'
 
   # input/output layer options
   opt.norm = 'minmax' # if normalization should not be used
