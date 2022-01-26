@@ -26,16 +26,16 @@ def GetParams():
   opt = argparse.Namespace()
 
   # data
-  opt.weights = 'D:/ML-SIM/OS-SIM/models/ML-SIMcopy apo/prelim160.pth' # model to retrain from
-  opt.imageSize = 512
-  opt.root = 'F:/Users/SIM_Admin/OneDrive - University of Cambridge/OS-SIM test data'
-  opt.out = 'F:/ML_SIM/OS-SIM/results/ML-SIMcopy apo'
+  opt.weights = 'C:/Users/SIM_ADMIN/Documents/GitHub/AtheSIM/ML-SIM-inference-for-AtheiSIM/DIV2K_randomised_3x3_20200317.pth' 
+  opt.imageSize = 255
+  opt.root = 'D:/SIM_Data/19-01-2022/split channels/to process'
+  opt.out = 'D:/SIM_Data/19-01-2022/split channels/to process'
 
   # input/output layer options
   opt.norm = 'minmax' # if normalization should not be used
   opt.task = 'simin_gtout'
   opt.scale = 1
-  opt.nch_in = 3
+  opt.nch_in = 9
   opt.nch_out = 1
 
   # architecture options 
@@ -45,6 +45,7 @@ def GetParams():
   opt.n_resblocks = 10
   opt.n_feats = 96
   opt.reduction = 16
+  opt.mean = 1 # sequential frames to average
 
   # test options
   opt.test = False
@@ -116,48 +117,53 @@ def EvaluateModel(opt):
         description = 'Processing image [%d/%d]' % (i+1,len(imgs))
         images = io.imread(imgfile)
 
-        nImgs = images.shape[0] // opt.nch_in
+        nImgs = images.shape[0] // (opt.nch_in*opt.mean)
         filename = os.path.basename(imgfile)[:-4]
 
         for stack_idx in tqdm(range(nImgs),desc=description):
-            stackSubset = images[stack_idx*opt.nch_in:(stack_idx+1)*opt.nch_in]
-            #stackSubset = stackSubset-np.amin(stackSubset)
+            stackSubset = images[stack_idx*opt.nch_in*opt.mean:(stack_idx+1)*opt.nch_in*opt.mean]
+            stackSubset = stackSubset-np.amin(stackSubset)
             stackSubset = stackSubset/np.amax(stackSubset)
-            for f in range(1,opt.nch_in):
+            for f in range(1,opt.nch_in*opt.mean):
                 stackSubset[f,:,:] =  match_histograms(stackSubset[f,:,:],stackSubset[0,:,:])
             wf = np.mean(stackSubset,0)
+            rolling = np.zeros(wf.shape)
+            for slice in range(opt.mean):
 
-            sub_tensor = torch.from_numpy(stackSubset)
-            sub_tensor = sub_tensor.unsqueeze(0)
-            sub_tensor = sub_tensor.type(torch.FloatTensor)
+                sub_tensor = torch.from_numpy(stackSubset[opt.nch_in*slice:opt.nch_in*(slice+1)])
+                sub_tensor = sub_tensor.unsqueeze(0)
+                sub_tensor = sub_tensor.type(torch.FloatTensor)
+                
+                
+                with torch.no_grad():
+                    if opt.cpu:
+                        sr = net(sub_tensor)
+                    else:
+                        sr = net(sub_tensor.cuda())
+                    sr = sr.cpu()
+
+                    sr = torch.clamp(sr[0],0,1)
+                    sr_frame = sr.numpy()
+                    sr_frame = np.squeeze(sr_frame)                               
+                rolling += sr_frame
+                #if stack_idx == 0:
+                #    reference = np.copy(sr_frame)
+                #else: 
+                #    sr_frame = match_histograms(sr_frame,reference)
+
             
-            
-            with torch.no_grad():
-                if opt.cpu:
-                    sr = net(sub_tensor)
-                else:
-                    sr = net(sub_tensor.cuda())
-                sr = sr.cpu()
-
-                sr = torch.clamp(sr[0],0,1)
-                sr_frame = sr.numpy()
-                sr_frame = np.squeeze(sr_frame)                               
-
-            #if stack_idx == 0:
-            #    reference = np.copy(sr_frame)
-            #else: 
-            #    sr_frame = match_histograms(sr_frame,reference)
-
-        
-
-            wf = (wf * 65000/np.amax(wf)).astype('uint16')
-            svPath = opt.out + '/' + filename +'_wf.tif'
-            tifffile.imsave(svPath,wf,append=True)
+            try:
+                wf = (wf * 65000/np.amax(wf)).astype('uint16')
+                svPath = opt.out + '/' + filename +'_wf.tif'
+                tifffile.imsave(svPath,wf,append=True)
 
 
-            sr_frame = (sr_frame * 65000).astype('uint16')
-            svPath = opt.out + '/' + filename +'_sr.tif'
-            tifffile.imsave(svPath,sr_frame,append=True)
+                rolling = (rolling * 65000/opt.mean).astype('uint16')
+                svPath = opt.out + '/' + filename +'_sr.tif'
+                tifffile.imsave(svPath,rolling,append=True)
+            except:
+                print('Permission error')
+                break
 
 
 if __name__ == '__main__':

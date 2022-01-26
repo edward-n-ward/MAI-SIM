@@ -7,21 +7,21 @@ clear all
 a_num=3;% number of pattern orientations
 p_num=3;% phase shift times for each pattern orientation
 
-[file, path] = uigetfile('D:\SIM_Data\*.tif');
+[file, path] = uigetfile('F:\SIM_Data\*.tif');
 filepath=fullfile(path,file);%replace with your file's path
 filename='1_X';% the names should be 1_X1, 1_X2, ..., 1_X(a_num*p_num) in this case;
 fileformat='tif';
 
 %% parameter of the detection system
 lambda=590;% fluorescence emission wavelength (emission maximum). unit: nm
-psize=84; 
+psize=85; 
 % psize=pixel size/magnification power. unit: nm
 NA=1.2;
 
 %% parameter for reconstruction
-wiener_factor=0.01;
+wiener_factor=0.1;
 
-mask_factor=0.5;%a high-pass mask (fmask) is utilized to estimate the modulation vector;
+mask_factor=0.4;%a high-pass mask (fmask) is utilized to estimate the modulation vector;
 % the cutoff frequency of fmask is mask_factor*(cutoff frequency of the detection OTF)
 % recommended value: 0.6 for conventional SIM, 0.8 for TIRF-SIM
 
@@ -159,7 +159,7 @@ end
 % my_phase_auto=mod(-auto_phase,2*pi);
 % my_phase_cc=mod(cc_phase,2*pi);
 
-% inv_phase=auto_phase;
+inv_phase=auto_phase;
 % reconstruct with phases determined by the auto-correlation method
 
 % inv_phase=-cc_phase;
@@ -313,9 +313,9 @@ widefield=deconvlucy(widefield,ipsfde,3);
 figure;imagesc(widefield);colormap(hot);title('wide-field');
 
 if save_flag==1
-    mytemp=uint8(reconstructed_im./max(reconstructed_im(:))*255);
+    mytemp=uint16(reconstructed_im./max(reconstructed_im(:))*63000);
     imwrite(mytemp,hot(256),[path,'SIM.',fileformat],fileformat);
 
-    mytemp=uint8(widefield./max(widefield(:))*255);
+    mytemp=uint16(widefield./max(widefield(:))*63000);
     imwrite(mytemp,hot(256),[path,'Widefield.',fileformat],fileformat);
 end
