@@ -67,7 +67,6 @@ def live_loop(stop_signal,output,exposure):
                         pixels = pixels - np.amin(pixels)
                         pixels = 255*pixels/np.amax(pixels)
                         output.put(pixels)
-                        print(i)
                    
         core.stop_sequence_acquisition() # stop the camera
         CameraTask.write(True) # make sure camera has stoppped by requesting a final unused image

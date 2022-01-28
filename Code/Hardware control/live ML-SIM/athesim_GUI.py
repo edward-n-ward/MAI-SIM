@@ -33,9 +33,20 @@ class ML_App:
         self.live.place(x=15, y=10)
         self.Stop_live = tk.Button(self.tab1, width=10, text='Stop', command = self.stop_live)
         self.Stop_live.place(x=15, y=40)
+
+        self.var1 = tk.IntVar()
+        self.var2 = tk.IntVar()
+        self.c561 = tk.Checkbutton(self.tab1, text='561',variable=self.var1, onvalue=1, offvalue=0, command=self.green_laser)
+        self.c561.place(x = 15,y = 155)
+        self.c647  = tk.Checkbutton(self.tab1, text='647',variable=self.var2, onvalue=1, offvalue=0, command=self.red_laser)
+        self.c647.place(x = 15,y = 185)
+        
+
         blank = np.zeros((512,512))
         img =  ImageTk.PhotoImage(image=Image.fromarray(blank)) # image
         self.panel = tk.Label(self.tab1, image=img)
+        self.panel.configure(image=img) # update the GUI element
+        self.panel.image = img  
         self.panel.pack(side = "top")
 
         self.live_decon = tk.Button(self.tab1,width=10, text='Live ML-SIM', command = self.start_live) # start live sim
@@ -76,7 +87,13 @@ class ML_App:
             dev = torch.cuda.get_device_name(0)
             print('Using device:')
             print(dev)
-        
+    
+    def green_laser(self):
+        print(self.var1.get())
+
+    def red_laser(self):
+        print(self.var2.get())
+
     def update_roi(self):
         xOffset = self.xOff.get() # get ROI variables from the GUI input
         yOffset = self.yOff.get()
