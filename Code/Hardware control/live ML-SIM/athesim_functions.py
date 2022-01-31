@@ -1,23 +1,89 @@
 import nidaqmx # microscope control
 import numpy as np
 import time
-import multiprocessing as mp
+import torch.multiprocessing as mp
 from pycromanager import Bridge
 import torch
+from models import *
+import argparse
 
 mp.freeze_support() 
 
+## Grt ML-SIM params
+def GetParams():
+  opt = argparse.Namespace()
+
+  # data
+  opt.weights = 'C:/Users/SIM_ADMIN/Documents/GitHub/AtheSIM/ML-SIM-inference-for-AtheiSIM/DIV2K_randomised_3x3_20200317.pth' 
+  
+  # input/output layer options
+  opt.task = 'simin_gtout'
+  opt.scale = 1
+  opt.nch_in = 9
+  opt.nch_out = 1
+
+  # architecture options 
+  opt.model='rcan'#'model to use'  
+  opt.narch = 0
+  opt.n_resgroups = 3
+  opt.n_resblocks = 10
+  opt.n_feats = 96
+  opt.reduction = 16
+    
+  return opt
+
+## Convenience function
+def remove_dataparallel_wrapper(state_dict):
+	r"""Converts a DataParallel model to a normal one by removing the "module."
+	wrapper in the module dictionary
+
+	Args:
+		state_dict: a torch.nn.DataParallel state dictionary
+	"""
+	from collections import OrderedDict
+
+	new_state_dict = OrderedDict()
+	for k, vl in state_dict.items():
+		name = k[7:] # remove 'module.' of DataParallel
+		new_state_dict[name] = vl
+
+	return new_state_dict
+
+## Load ML-SIM model
+def load_model():
+    print('geting network params')
+    opt = GetParams()
+    print('building network')
+    net = GetModel(opt)
+    print('loading checkpoint')
+    checkpoint = torch.load(opt.weights,map_location=torch.device('cuda'))
+    if type(checkpoint) is dict:
+        state_dict = checkpoint['state_dict']
+    else:
+        state_dict = checkpoint
+    net.module.load_state_dict(state_dict)
+    return net
+
 ## ML-SIM reconstruction
 def ml_reconstruction(stack,output):
+    net = load_model()
     while True:
-        if not stack.empty():
-            pixels = stack.get()
-            if isinstance(pixels, bool):
-                    break
-            else:
-                # run the reconstruction function 
-                img = np.mean(pixels,2)
-                output.put(img)
+        with torch.no_grad():
+            if not stack.empty():
+                pixels = stack.get()
+                if isinstance(pixels, bool):
+                        break
+                else:
+                    # run the reconstruction function 
+                    data = torch.from_numpy(pixels)
+                    data = torch.swapaxes(data,0,2)
+                    data = data.unsqueeze(0)
+                    data = data.type(torch.FloatTensor)
+                    sr = net(data.cuda())
+                    sr = sr.cpu()
+                    sr_frame = sr.numpy()
+                    sr_frame = np.squeeze(sr_frame) 
+                    output.put(sr_frame)
     
     output.put(False)
 
@@ -26,7 +92,7 @@ def live_loop(stop_signal,output,exposure):
     stop_signal.put(True)
     with nidaqmx.Task() as VoltageTask, nidaqmx.Task() as CameraTask, Bridge() as bridge: # sorts out camera and microscope control
         voltages = np.array([0.95, 0.9507, 0.9514, 2.25, 2.2513, 2.2526, 3.5, 3.5015, 3.517]) # microscope control values
-        VoltageTask.ao_channels.add_ao_voltage_chan("Galvo_control/ao0")
+        VoltageTask.ao_channels.add_ao_voltage_chan("Galvo_control/ao1")
         CameraTask.do_channels.add_do_chan("Galvo_control/port1/line3")
         core = bridge.get_core()
 
@@ -55,7 +121,7 @@ def live_loop(stop_signal,output,exposure):
                 if output.empty():
                     for i in range(9):
                         VoltageTask.write(voltages[i]) # move microscope
-                        time.sleep(0.01)     
+                        time.sleep(0.05)     
 
                         CameraTask.write(True) # start acquisition
                         time.sleep(exposure/1000)
@@ -80,7 +146,7 @@ def acquisition_loop(stop_signal,stack,exposure):
     pixels = np.zeros((512,512,9))
     with nidaqmx.Task() as VoltageTask, nidaqmx.Task() as CameraTask, Bridge() as bridge: # sorts out camera and microscope control
         voltages = np.array([0.95, 0.9507, 0.9514, 2.25, 2.2513, 2.2526, 3.5, 3.5015, 3.517]) # microscope control values
-        VoltageTask.ao_channels.add_ao_voltage_chan("Galvo_control/ao0")
+        VoltageTask.ao_channels.add_ao_voltage_chan("Galvo_control/ao1")
         CameraTask.do_channels.add_do_chan("Galvo_control/port1/line3")
         core = bridge.get_core()
 
@@ -108,7 +174,7 @@ def acquisition_loop(stop_signal,stack,exposure):
                 if stack.empty():
                     for i in range(9):
                         VoltageTask.write(voltages[i]) # move microscope
-                        time.sleep(0.01)     
+                        time.sleep(0.05)     
 
                         CameraTask.write(True) # start acquisition
                         time.sleep(exposure/1000)

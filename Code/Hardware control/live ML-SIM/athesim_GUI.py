@@ -3,13 +3,14 @@ from PIL import Image, ImageTk # numpy to GUI element
 import tkinter as tk
 from tkinter import ttk
 import threading
-import multiprocessing as mp
+import torch.multiprocessing as mp
 import numpy as np
 import athesim_functions as asf
 import time
 from pycromanager import Bridge # camera control
 import torch
 
+## ML-SIM App
 class ML_App:
     def __init__(self,master):
 
@@ -18,12 +19,10 @@ class ML_App:
         master.geometry("800x620") # size of gui
         self.tab1 = ttk.Frame(tabControl)
         self.tab2 = ttk.Frame(tabControl)
-        tabControl.add(self.tab1, text ='Tab 1')
-        tabControl.add(self.tab2, text ='Tab 2')
+        tabControl.add(self.tab1, text ='Acquisition control')
+        tabControl.add(self.tab2, text ='Hardware properties')
         tabControl.pack(expand = 1, fill ="both")
 
-
-        #Defining Queues needed for communication 
         self.stop_signal = mp.Queue()
         self.output = mp.Queue()
         self.stack = mp.Queue()
@@ -49,16 +48,22 @@ class ML_App:
         self.panel.image = img  
         self.panel.pack(side = "top")
 
-        self.live_decon = tk.Button(self.tab1,width=10, text='Live ML-SIM', command = self.start_live) # start live sim
+        img = ImageTk.PhotoImage(file='optosplit.jpg')
+        self.optosplit = tk.Label(self.tab2, image=img)
+        self.optosplit.configure(image=img) # update the GUI element
+        self.optosplit.image = img  
+        self.optosplit.pack(side = "top")
+
+        self.live_decon = tk.Button(self.tab1,width=10, text='Live ML-SIM', command = self.start_live) # start live preview
         self.live_decon.place(x=15, y=250)
 
-        self.quit_button = tk.Button(self.tab1,width=10, text='Quit',command=self.quit_gui) # start live sim
+        self.quit_button = tk.Button(self.tab1,width=10, text='Quit',command=self.quit_gui) # quit the GUI
         self.quit_button.place(x=15, y=250)       
 
         self.start_live_decon = tk.Button(self.tab1,width=10, text='Live ML-SIM', command = self.start_ml_sim) # start live sim
         self.start_live_decon.place(x=15, y=280)
 
-        self.update_ROI = tk.Button(self.tab2,width=10, text='Update ROI') # start live sim
+        self.update_ROI = tk.Button(self.tab2,width=10, text='Update ROI') #update camera ROI
         self.update_ROI.place(x=15, y=220)
 
         self.expTime = tk.IntVar()
@@ -88,6 +93,7 @@ class ML_App:
             print('Using device:')
             print(dev)
     
+    ## Class functions
     def green_laser(self):
         print(self.var1.get())
 
@@ -135,7 +141,9 @@ class ML_App:
                     print('imArray was bool')
                     break
                 else:
-                    # run the update function 
+                    # run the update function
+                    image_array = image_array-np.amin(image_array)
+                    image_array = image_array*255/np.amax(image_array) 
                     img =  ImageTk.PhotoImage(image=Image.fromarray(image_array)) # convert numpy array to tikner object 
                     self.panel.configure(image=img) # update the GUI element
                     self.panel.image = img  
