@@ -79,7 +79,11 @@ def ml_reconstruction(stack,output):
                     data = torch.swapaxes(data,0,2)
                     data = data.unsqueeze(0)
                     data = data.type(torch.FloatTensor)
+                    data = data.cuda()
+                    data = data - np.amin(data)
+                    data = data/np.amax(data)
                     sr = net(data.cuda())
+
                     sr = sr.cpu()
                     sr_frame = sr.numpy()
                     sr_frame = np.squeeze(sr_frame) 
@@ -89,10 +93,11 @@ def ml_reconstruction(stack,output):
 
 ## Live view
 def live_loop(stop_signal,output,exposure):
+    print('starting acquisition')
     stop_signal.put(True)
     with nidaqmx.Task() as VoltageTask, nidaqmx.Task() as CameraTask, Bridge() as bridge: # sorts out camera and microscope control
         voltages = np.array([0.95, 0.9507, 0.9514, 2.25, 2.2513, 2.2526, 3.5, 3.5015, 3.517]) # microscope control values
-        VoltageTask.ao_channels.add_ao_voltage_chan("Galvo_control/ao1")
+        VoltageTask.ao_channels.add_ao_voltage_chan("Galvo_control/ao0")
         CameraTask.do_channels.add_do_chan("Galvo_control/port1/line3")
         core = bridge.get_core()
 
@@ -130,8 +135,9 @@ def live_loop(stop_signal,output,exposure):
                             time.sleep(0.001)                
                         result = core.get_last_tagged_image() # get image data into python
                         pixels = np.squeeze(np.reshape(result.pix,newshape=[-1, result.tags["Height"], result.tags["Width"]],)) # reshape image data
+                        pixels = pixels.astype('float64')
                         pixels = pixels - np.amin(pixels)
-                        pixels = 255*pixels/np.amax(pixels)
+                        pixels = pixels*(255/np.amax(pixels))
                         output.put(pixels)
                    
         core.stop_sequence_acquisition() # stop the camera
@@ -142,11 +148,12 @@ def live_loop(stop_signal,output,exposure):
 
 ## Live ML-SIM
 def acquisition_loop(stop_signal,stack,exposure):
+    print('starting acquisition')
     stop_signal.put(True)
     pixels = np.zeros((512,512,9))
     with nidaqmx.Task() as VoltageTask, nidaqmx.Task() as CameraTask, Bridge() as bridge: # sorts out camera and microscope control
         voltages = np.array([0.95, 0.9507, 0.9514, 2.25, 2.2513, 2.2526, 3.5, 3.5015, 3.517]) # microscope control values
-        VoltageTask.ao_channels.add_ao_voltage_chan("Galvo_control/ao1")
+        VoltageTask.ao_channels.add_ao_voltage_chan("Galvo_control/ao0")
         CameraTask.do_channels.add_do_chan("Galvo_control/port1/line3")
         core = bridge.get_core()
 
@@ -183,9 +190,6 @@ def acquisition_loop(stop_signal,stack,exposure):
                             time.sleep(0.001)                
                         result = core.get_last_tagged_image() # get image data into python
                         pixels[:,:,i] = np.squeeze(np.reshape(result.pix,newshape=[-1, result.tags["Height"], result.tags["Width"]],)) # reshape image data
-                    
-                    pixels = pixels - np.amin(pixels)
-                    pixels = 255*pixels/np.amax(pixels)
                     stack.put(pixels)
                     
         core.stop_sequence_acquisition() # stop the camera

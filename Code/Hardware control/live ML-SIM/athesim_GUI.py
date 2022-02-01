@@ -33,15 +33,8 @@ class ML_App:
         self.Stop_live = tk.Button(self.tab1, width=10, text='Stop', command = self.stop_live)
         self.Stop_live.place(x=15, y=40)
 
-        self.var1 = tk.IntVar()
-        self.var2 = tk.IntVar()
-        self.c561 = tk.Checkbutton(self.tab1, text='561',variable=self.var1, onvalue=1, offvalue=0, command=self.green_laser)
-        self.c561.place(x = 15,y = 155)
-        self.c647  = tk.Checkbutton(self.tab1, text='647',variable=self.var2, onvalue=1, offvalue=0, command=self.red_laser)
-        self.c647.place(x = 15,y = 185)
-        
-
         blank = np.zeros((512,512))
+        blank = blank.astype('uint8')
         img =  ImageTk.PhotoImage(image=Image.fromarray(blank)) # image
         self.panel = tk.Label(self.tab1, image=img)
         self.panel.configure(image=img) # update the GUI element
@@ -89,17 +82,12 @@ class ML_App:
             self.start_live_decon['state'] = DISABLED
             print('A valid GPU is required for live ML-SIM')
         else:
-            dev = torch.cuda.get_device_name(0)
+            gpu_dev = torch.cuda.get_device_name(0)
             print('Using device:')
-            print(dev)
+            print(gpu_dev)
     
     ## Class functions
-    def green_laser(self):
-        print(self.var1.get())
-
-    def red_laser(self):
-        print(self.var2.get())
-
+    
     def update_roi(self):
         xOffset = self.xOff.get() # get ROI variables from the GUI input
         yOffset = self.yOff.get()
@@ -138,13 +126,14 @@ class ML_App:
             if not self.output.empty():
                 image_array = self.output.get() # empty data from reconstruction pool
                 if isinstance(image_array, bool):
-                    print('imArray was bool')
+                    print('finished acquisition')
                     break
                 else:
                     # run the update function
                     image_array = image_array-np.amin(image_array)
                     image_array = image_array*255/np.amax(image_array) 
-                    img =  ImageTk.PhotoImage(image=Image.fromarray(image_array)) # convert numpy array to tikner object 
+                    image_array = image_array.astype('uint8')
+                    img =  ImageTk.PhotoImage(image=Image.fromarray(image_array,mode='L')) # convert numpy array to tikner object 
                     self.panel.configure(image=img) # update the GUI element
                     self.panel.image = img  
             # else:
