@@ -131,7 +131,7 @@ class ML_App:
                 else:
                     # run the update function
                     image_array = image_array-np.amin(image_array)
-                    image_array = image_array*255/np.amax(image_array) 
+                    image_array = image_array*(255/np.amax(image_array)) 
                     image_array = image_array.astype('uint8')
                     img =  ImageTk.PhotoImage(image=Image.fromarray(image_array,mode='L')) # convert numpy array to tikner object 
                     self.panel.configure(image=img) # update the GUI element

@@ -6,6 +6,7 @@ from pycromanager import Bridge
 import torch
 from models import *
 import argparse
+from swinir_arch import SwinIR
 
 mp.freeze_support() 
 
@@ -30,6 +31,21 @@ def GetParams():
   opt.n_feats = 96
   opt.reduction = 16
     
+  return opt
+
+## Grt ML-SIM params
+def get_VSR_params():
+  opt = argparse.Namespace()
+
+  # input/output layer options
+  opt.task = 'simrec'
+  opt.patch_size = 64
+  opt.scale = 2
+  opt.noise = 0
+  opt.jpeg = 40
+  opt.large_model = True
+  opt.model_path = 'C:/Users/SIM_ADMIN/Downloads/VSR/SwinIR_RCAB_model-opts-20220202/experiments/SwinIR_RCAB/net_g_latest.pth'
+
   return opt
 
 ## Convenience function
@@ -63,6 +79,150 @@ def load_model():
         state_dict = checkpoint
     net.module.load_state_dict(state_dict)
     return net
+
+## Load VSR model
+def load_VSR_model():
+    opts = get_VSR_params()
+    device = torch.device('cuda')
+    model = define_model(opts)
+    model.eval()
+    model = model.to(device)
+
+    return model
+
+def define_model(args):
+    # 001 classical image sr
+    if args.task == 'classical_sr':
+        model = SwinIR(
+            upscale=args.scale,
+            in_chans=3,
+            img_size=args.patch_size,
+            window_size=8,
+            img_range=1.,
+            depths=[6, 6, 6, 6, 6, 6],
+            embed_dim=180,
+            num_heads=[6, 6, 6, 6, 6, 6],
+            mlp_ratio=2,
+            upsampler='pixelshuffle',
+            resi_connection='1conv')
+
+    # 002 lightweight image sr
+    # use 'pixelshuffledirect' to save parameters
+    elif args.task == 'lightweight_sr':
+        model = SwinIR(
+            upscale=args.scale,
+            in_chans=3,
+            img_size=64,
+            window_size=8,
+            img_range=1.,
+            depths=[6, 6, 6, 6],
+            embed_dim=60,
+            num_heads=[6, 6, 6, 6],
+            mlp_ratio=2,
+            upsampler='pixelshuffledirect',
+            resi_connection='1conv')
+
+    # 003 real-world image sr
+    elif args.task == 'real_sr':
+        if not args.large_model:
+            # use 'nearest+conv' to avoid block artifacts
+            model = SwinIR(
+                upscale=4,
+                in_chans=3,
+                img_size=64,
+                window_size=8,
+                img_range=1.,
+                depths=[6, 6, 6, 6, 6, 6],
+                embed_dim=180,
+                num_heads=[6, 6, 6, 6, 6, 6],
+                mlp_ratio=2,
+                upsampler='nearest+conv',
+                resi_connection='1conv')
+        else:
+            # larger model size; use '3conv' to save parameters and memory; use ema for GAN training
+            model = SwinIR(
+                upscale=4,
+                in_chans=3,
+                img_size=64,
+                window_size=8,
+                img_range=1.,
+                depths=[6, 6, 6, 6, 6, 6, 6, 6, 6],
+                embed_dim=248,
+                num_heads=[8, 8, 8, 8, 8, 8, 8, 8, 8],
+                mlp_ratio=2,
+                upsampler='nearest+conv',
+                resi_connection='3conv')
+
+    # 004 grayscale image denoising
+    elif args.task == 'gray_dn':
+        model = SwinIR(
+            upscale=1,
+            in_chans=1,
+            img_size=128,
+            window_size=8,
+            img_range=1.,
+            depths=[6, 6, 6, 6, 6, 6],
+            embed_dim=180,
+            num_heads=[6, 6, 6, 6, 6, 6],
+            mlp_ratio=2,
+            upsampler='',
+            resi_connection='1conv')
+
+    # 005 color image denoising
+    elif args.task == 'color_dn':
+        model = SwinIR(
+            upscale=1,
+            in_chans=3,
+            img_size=128,
+            window_size=8,
+            img_range=1.,
+            depths=[6, 6, 6, 6, 6, 6],
+            embed_dim=180,
+            num_heads=[6, 6, 6, 6, 6, 6],
+            mlp_ratio=2,
+            upsampler='',
+            resi_connection='1conv')
+
+    # 006 JPEG compression artifact reduction
+    # use window_size=7 because JPEG encoding uses 8x8; use img_range=255 because it's slightly better than 1
+    elif args.task == 'jpeg_car':
+        model = SwinIR(
+            upscale=1,
+            in_chans=1,
+            img_size=126,
+            window_size=7,
+            img_range=255.,
+            depths=[6, 6, 6, 6, 6, 6],
+            embed_dim=180,
+            num_heads=[6, 6, 6, 6, 6, 6],
+            mlp_ratio=2,
+            upsampler='',
+            resi_connection='1conv')
+    elif args.task == 'simrec':
+        model = SwinIR(
+            upscale=2,
+            in_chans=9,
+            img_size=512,
+            window_size=4,
+            img_range=1,
+            depths=[6, 6, 6],
+            embed_dim=180,
+            num_heads=[6, 6, 6],
+            mlp_ratio=2,
+            upsampler='',
+            resi_connection='1conv',
+            vis=True,
+            **{'pixelshuffleFactor':2})
+
+
+    loadnet = torch.load(args.model_path)
+    if 'params_ema' in loadnet:
+        keyname = 'params_ema'
+    else:
+        keyname = 'params'
+    model.load_state_dict(loadnet[keyname], strict=True)
+
+    return model
 
 ## ML-SIM reconstruction
 def ml_reconstruction(stack,output):
@@ -136,8 +296,6 @@ def live_loop(stop_signal,output,exposure):
                         result = core.get_last_tagged_image() # get image data into python
                         pixels = np.squeeze(np.reshape(result.pix,newshape=[-1, result.tags["Height"], result.tags["Width"]],)) # reshape image data
                         pixels = pixels.astype('float64')
-                        pixels = pixels - np.amin(pixels)
-                        pixels = pixels*(255/np.amax(pixels))
                         output.put(pixels)
                    
         core.stop_sequence_acquisition() # stop the camera
@@ -226,7 +384,9 @@ def live_ml_sim(stack,stop_signal,output,exposure):
         process.join()        
     
    
-   
+if __name__ == '__main__':
+    print('Done')
+    model = load_VSR_model()   
    
    
    
