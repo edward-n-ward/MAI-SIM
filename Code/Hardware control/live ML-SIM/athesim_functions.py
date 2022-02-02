@@ -7,6 +7,8 @@ import torch
 from models import *
 import argparse
 from swinir_arch import SwinIR
+import yaml
+from collections import OrderedDict
 
 mp.freeze_support() 
 
@@ -33,7 +35,7 @@ def GetParams():
     
   return opt
 
-## Grt ML-SIM params
+## Get ML-SIM params
 def get_VSR_params():
   opt = argparse.Namespace()
 
@@ -46,6 +48,12 @@ def get_VSR_params():
   opt.large_model = True
   opt.model_path = 'C:/Users/SIM_ADMIN/Downloads/VSR/SwinIR_RCAB_model-opts-20220202/experiments/SwinIR_RCAB/net_g_latest.pth'
 
+  opt.options = 'C:/Users/SIM_ADMIN/Downloads/VSR/options/train/VSR-SIM/VSR-SIM.yml'
+  opt.launcher = 'None'
+  opt.auto_resume = True
+  opt.debug = True
+  opt.local_rank = 0
+ 
   return opt
 
 ## Convenience function
@@ -80,16 +88,59 @@ def load_model():
     net.module.load_state_dict(state_dict)
     return net
 
+## Support OrderedDict for yaml
+def ordered_yaml():
+    """Support OrderedDict for yaml.
+
+    Returns:
+        yaml Loader and Dumper.
+    """
+    try:
+        from yaml import CDumper as Dumper
+        from yaml import CLoader as Loader
+    except ImportError:
+        from yaml import Dumper, Loader
+
+    _mapping_tag = yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG
+
+    def dict_representer(dumper, data):
+        return dumper.represent_dict(data.items())
+
+    def dict_constructor(loader, node):
+        return OrderedDict(loader.construct_pairs(node))
+
+    Dumper.add_representer(OrderedDict, dict_representer)
+    Loader.add_constructor(_mapping_tag, dict_constructor)
+    return Loader, Dumper
+
 ## Load VSR model
 def load_VSR_model():
     opts = get_VSR_params()
-    device = torch.device('cuda')
-    model = define_model(opts)
+
+    with open(opts.options, mode='r') as f:
+        options = yaml.load(f, Loader=ordered_yaml()[0])
+
+    options['auto_resume'] = False
+    options['is_train'] = False
+    options['dist'] = False
+    options['num_gpu'] = 1
+    options['rank'], options['world_size'] = 0,1        
+
+    model = build_model(opts).net_g  
+
+    device = torch.device('cuda')    
+    loadnet = torch.load(opts.model_path)
+    if 'params_ema' in loadnet:
+        keyname = 'params_ema'
+    else:
+        keyname = 'params'
+    model.load_state_dict(loadnet[keyname], strict=True)
     model.eval()
     model = model.to(device)
 
     return model
 
+## Define VSR model
 def define_model(args):
     # 001 classical image sr
     if args.task == 'classical_sr':
