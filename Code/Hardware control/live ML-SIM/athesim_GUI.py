@@ -28,7 +28,7 @@ class ML_App:
         self.stack = mp.Queue()
 
         self.opto = tk.IntVar()
-        self.multi = tk.Checkbutton(self.tab2,textvariable=self.opto)
+        self.multi = tk.Checkbutton(self.tab2,variable=self.opto)
         self.multi.place(x=15, y=120)
         self.multi_label = tk.Label(self.tab2, text = "Use optosplit")
         self.multi_label.place(x = 30,y = 122)
@@ -48,14 +48,14 @@ class ML_App:
         self.x1_label.place(x = 40,y = 280)        
 
         self.y2 = tk.IntVar()
-        self.y2.set(30)
+        self.y2.set(35)
         self.yco2 = tk.Entry(self.tab2,textvariable=self.y2) # Y2 field
         self.yco2.place(x=75, y=303, width=25)
         self.y2_label = tk.Label(self.tab2, text = "y2")
         self.y2_label.place(x = 100,y=303)
 
         self.x2 = tk.IntVar()
-        self.x2.set(30)
+        self.x2.set(695)
         self.xco2 = tk.Entry(self.tab2,textvariable=self.x2) # X2 field
         self.xco2.place(x=15, y=303, width=25)
         self.x2_label = tk.Label(self.tab2, text = "x2")
@@ -124,7 +124,6 @@ class ML_App:
             print(gpu_dev)
     
     ## Class functions
-    
     def update_roi(self):
         xOffset = self.xOff.get() # get ROI variables from the GUI input
         yOffset = self.yOff.get()
@@ -154,7 +153,7 @@ class ML_App:
                 core = bridge.get_core()
                 ROI = [xmin, ymin, width, height] # build ROI 
                 core.set_roi(*ROI) # set ROI  
-                print('Successfully set ROI')
+                print('Successfully set ROI for optosplit')
         else:
             with Bridge() as bridge: # load camera control library
                 x1 = self.xOff.get() # get ROI variables from the GUI input
@@ -196,7 +195,7 @@ class ML_App:
                 if isinstance(image_array, bool):
                     print('finished acquisition')
                     break
-                else:
+                elif len(image_array.shape)==2:
                     # run the update function
                     image_array = image_array-np.amin(image_array)
                     image_array = image_array*(255/np.amax(image_array)) 
@@ -204,6 +203,21 @@ class ML_App:
                     img =  ImageTk.PhotoImage(image=Image.fromarray(image_array,mode='L')) # convert numpy array to tikner object 
                     self.panel.configure(image=img) # update the GUI element
                     self.panel.image = img  
+                elif len(image_array.shape)==3:
+                    r = image_array[:,:,0]
+                    g = image_array[:,:,1]
+                    result = np.zeros((512,512,3))
+                    r = r-np.amin(r)
+                    r = 255*(r/np.amax(r))
+                    g = g-np.amin(g)
+                    g = 255*(g/np.amax(g))
+                    result[:,:,0] = r
+                    result[:,:,1] = g
+                    
+                    result = result.astype('uint8')
+                    img =  ImageTk.PhotoImage(image=Image.fromarray(result,mode='RGB')) # convert numpy array to tikner object 
+                    self.panel.configure(image=img) # update the GUI element
+                    self.panel.image = img 
             # else:
                 # print('imArray was empty')
 

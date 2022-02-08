@@ -94,6 +94,7 @@ def ml_reconstruction(stack,output):
 ## Live view
 def live_loop(stop_signal,output,exposure,opto,x1,y1,x2,y2):
     print('starting acquisition')
+
     stop_signal.put(True)
     with nidaqmx.Task() as VoltageTask, nidaqmx.Task() as CameraTask, Bridge() as bridge: # sorts out camera and microscope control
         voltages = np.array([0.95, 0.9508, 0.9516, 2.2, 2.2025, 2.205, 3.45, 3.454, 3.4548]) # microscope control values
@@ -137,8 +138,8 @@ def live_loop(stop_signal,output,exposure,opto,x1,y1,x2,y2):
                         pixels = pixels.astype('float64')
                         if opto == 1:
                             result = np.zeros((512,512,2))
-                            result[:,:,0] = pixels[x1:x1+511,y1:y1+511]
-                            result[:,:,1] = pixels[x2:x2+511,y2:y2+511]
+                            result[:,:,0] = pixels[np.clip(y1-y2,0,None):np.clip(y1-y2,0,None)+512,0:512]
+                            result[:,:,1] = pixels[np.clip(y2-y1,0,None):np.clip(y2-y1,0,None)+512,x2-x1:x2-x1+512]
                             output.put(result)
                         else:       
                             output.put(pixels)
