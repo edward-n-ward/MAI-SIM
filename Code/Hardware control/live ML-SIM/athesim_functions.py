@@ -6,9 +6,6 @@ from pycromanager import Bridge
 import torch
 from models import *
 import argparse
-from swinir_arch import SwinIR
-import yaml
-from collections import OrderedDict
 
 mp.freeze_support() 
 
@@ -33,27 +30,6 @@ def GetParams():
   opt.n_feats = 96
   opt.reduction = 16
     
-  return opt
-
-## Get ML-SIM params
-def get_VSR_params():
-  opt = argparse.Namespace()
-
-  # input/output layer options
-  opt.task = 'simrec'
-  opt.patch_size = 64
-  opt.scale = 2
-  opt.noise = 0
-  opt.jpeg = 40
-  opt.large_model = True
-  opt.model_path = 'C:/Users/SIM_ADMIN/Downloads/VSR/SwinIR_RCAB_model-opts-20220202/experiments/SwinIR_RCAB/net_g_latest.pth'
-
-  opt.options = 'C:/Users/SIM_ADMIN/Downloads/VSR/options/train/VSR-SIM/VSR-SIM.yml'
-  opt.launcher = 'None'
-  opt.auto_resume = True
-  opt.debug = True
-  opt.local_rank = 0
- 
   return opt
 
 ## Convenience function
@@ -88,193 +64,6 @@ def load_model():
     net.module.load_state_dict(state_dict)
     return net
 
-## Support OrderedDict for yaml
-def ordered_yaml():
-    """Support OrderedDict for yaml.
-
-    Returns:
-        yaml Loader and Dumper.
-    """
-    try:
-        from yaml import CDumper as Dumper
-        from yaml import CLoader as Loader
-    except ImportError:
-        from yaml import Dumper, Loader
-
-    _mapping_tag = yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG
-
-    def dict_representer(dumper, data):
-        return dumper.represent_dict(data.items())
-
-    def dict_constructor(loader, node):
-        return OrderedDict(loader.construct_pairs(node))
-
-    Dumper.add_representer(OrderedDict, dict_representer)
-    Loader.add_constructor(_mapping_tag, dict_constructor)
-    return Loader, Dumper
-
-## Load VSR model
-def load_VSR_model():
-    opts = get_VSR_params()
-
-    with open(opts.options, mode='r') as f:
-        options = yaml.load(f, Loader=ordered_yaml()[0])
-
-    options['auto_resume'] = False
-    options['is_train'] = False
-    options['dist'] = False
-    options['num_gpu'] = 1
-    options['rank'], options['world_size'] = 0,1        
-
-    model = build_model(opts).net_g  
-
-    device = torch.device('cuda')    
-    loadnet = torch.load(opts.model_path)
-    if 'params_ema' in loadnet:
-        keyname = 'params_ema'
-    else:
-        keyname = 'params'
-    model.load_state_dict(loadnet[keyname], strict=True)
-    model.eval()
-    model = model.to(device)
-
-    return model
-
-## Define VSR model
-def define_model(args):
-    # 001 classical image sr
-    if args.task == 'classical_sr':
-        model = SwinIR(
-            upscale=args.scale,
-            in_chans=3,
-            img_size=args.patch_size,
-            window_size=8,
-            img_range=1.,
-            depths=[6, 6, 6, 6, 6, 6],
-            embed_dim=180,
-            num_heads=[6, 6, 6, 6, 6, 6],
-            mlp_ratio=2,
-            upsampler='pixelshuffle',
-            resi_connection='1conv')
-
-    # 002 lightweight image sr
-    # use 'pixelshuffledirect' to save parameters
-    elif args.task == 'lightweight_sr':
-        model = SwinIR(
-            upscale=args.scale,
-            in_chans=3,
-            img_size=64,
-            window_size=8,
-            img_range=1.,
-            depths=[6, 6, 6, 6],
-            embed_dim=60,
-            num_heads=[6, 6, 6, 6],
-            mlp_ratio=2,
-            upsampler='pixelshuffledirect',
-            resi_connection='1conv')
-
-    # 003 real-world image sr
-    elif args.task == 'real_sr':
-        if not args.large_model:
-            # use 'nearest+conv' to avoid block artifacts
-            model = SwinIR(
-                upscale=4,
-                in_chans=3,
-                img_size=64,
-                window_size=8,
-                img_range=1.,
-                depths=[6, 6, 6, 6, 6, 6],
-                embed_dim=180,
-                num_heads=[6, 6, 6, 6, 6, 6],
-                mlp_ratio=2,
-                upsampler='nearest+conv',
-                resi_connection='1conv')
-        else:
-            # larger model size; use '3conv' to save parameters and memory; use ema for GAN training
-            model = SwinIR(
-                upscale=4,
-                in_chans=3,
-                img_size=64,
-                window_size=8,
-                img_range=1.,
-                depths=[6, 6, 6, 6, 6, 6, 6, 6, 6],
-                embed_dim=248,
-                num_heads=[8, 8, 8, 8, 8, 8, 8, 8, 8],
-                mlp_ratio=2,
-                upsampler='nearest+conv',
-                resi_connection='3conv')
-
-    # 004 grayscale image denoising
-    elif args.task == 'gray_dn':
-        model = SwinIR(
-            upscale=1,
-            in_chans=1,
-            img_size=128,
-            window_size=8,
-            img_range=1.,
-            depths=[6, 6, 6, 6, 6, 6],
-            embed_dim=180,
-            num_heads=[6, 6, 6, 6, 6, 6],
-            mlp_ratio=2,
-            upsampler='',
-            resi_connection='1conv')
-
-    # 005 color image denoising
-    elif args.task == 'color_dn':
-        model = SwinIR(
-            upscale=1,
-            in_chans=3,
-            img_size=128,
-            window_size=8,
-            img_range=1.,
-            depths=[6, 6, 6, 6, 6, 6],
-            embed_dim=180,
-            num_heads=[6, 6, 6, 6, 6, 6],
-            mlp_ratio=2,
-            upsampler='',
-            resi_connection='1conv')
-
-    # 006 JPEG compression artifact reduction
-    # use window_size=7 because JPEG encoding uses 8x8; use img_range=255 because it's slightly better than 1
-    elif args.task == 'jpeg_car':
-        model = SwinIR(
-            upscale=1,
-            in_chans=1,
-            img_size=126,
-            window_size=7,
-            img_range=255.,
-            depths=[6, 6, 6, 6, 6, 6],
-            embed_dim=180,
-            num_heads=[6, 6, 6, 6, 6, 6],
-            mlp_ratio=2,
-            upsampler='',
-            resi_connection='1conv')
-    elif args.task == 'simrec':
-        model = SwinIR(
-            upscale=2,
-            in_chans=9,
-            img_size=512,
-            window_size=4,
-            img_range=1,
-            depths=[6, 6, 6],
-            embed_dim=180,
-            num_heads=[6, 6, 6],
-            mlp_ratio=2,
-            upsampler='',
-            resi_connection='1conv',
-            vis=True,
-            **{'pixelshuffleFactor':2})
-
-
-    loadnet = torch.load(args.model_path)
-    if 'params_ema' in loadnet:
-        keyname = 'params_ema'
-    else:
-        keyname = 'params'
-    model.load_state_dict(loadnet[keyname], strict=True)
-
-    return model
-
 ## ML-SIM reconstruction
 def ml_reconstruction(stack,output):
     net = load_model()
@@ -291,8 +80,8 @@ def ml_reconstruction(stack,output):
                     data = data.unsqueeze(0)
                     data = data.type(torch.FloatTensor)
                     data = data.cuda()
-                    data = data - np.amin(data)
-                    data = data/np.amax(data)
+                    data = data - torch.amin(data)
+                    data = data/torch.amax(data)
                     sr = net(data.cuda())
 
                     sr = sr.cpu()
@@ -303,12 +92,12 @@ def ml_reconstruction(stack,output):
     output.put(False)
 
 ## Live view
-def live_loop(stop_signal,output,exposure):
+def live_loop(stop_signal,output,exposure,opto,x1,y1,x2,y2):
     print('starting acquisition')
     stop_signal.put(True)
     with nidaqmx.Task() as VoltageTask, nidaqmx.Task() as CameraTask, Bridge() as bridge: # sorts out camera and microscope control
-        voltages = np.array([0.95, 0.9507, 0.9514, 2.25, 2.2513, 2.2526, 3.5, 3.5015, 3.517]) # microscope control values
-        VoltageTask.ao_channels.add_ao_voltage_chan("Galvo_control/ao0")
+        voltages = np.array([0.95, 0.9508, 0.9516, 2.2, 2.2025, 2.205, 3.45, 3.454, 3.4548]) # microscope control values
+        VoltageTask.ao_channels.add_ao_voltage_chan("Galvo_control/ao1")
         CameraTask.do_channels.add_do_chan("Galvo_control/port1/line3")
         core = bridge.get_core()
 
@@ -328,7 +117,6 @@ def live_loop(stop_signal,output,exposure):
         result = core.get_last_tagged_image() # get image data into python        
 
         while True:
-
             status = stop_signal.get()
             if status == False:
                 break
@@ -347,7 +135,13 @@ def live_loop(stop_signal,output,exposure):
                         result = core.get_last_tagged_image() # get image data into python
                         pixels = np.squeeze(np.reshape(result.pix,newshape=[-1, result.tags["Height"], result.tags["Width"]],)) # reshape image data
                         pixels = pixels.astype('float64')
-                        output.put(pixels)
+                        if opto == 1:
+                            result = np.zeros((512,512,2))
+                            result[:,:,0] = pixels[x1:x1+511,y1:y1+511]
+                            result[:,:,1] = pixels[x2:x2+511,y2:y2+511]
+                            output.put(result)
+                        else:       
+                            output.put(pixels)
                    
         core.stop_sequence_acquisition() # stop the camera
         CameraTask.write(True) # make sure camera has stoppped by requesting a final unused image
@@ -362,7 +156,7 @@ def acquisition_loop(stop_signal,stack,exposure):
     pixels = np.zeros((512,512,9))
     with nidaqmx.Task() as VoltageTask, nidaqmx.Task() as CameraTask, Bridge() as bridge: # sorts out camera and microscope control
         voltages = np.array([0.95, 0.9507, 0.9514, 2.25, 2.2513, 2.2526, 3.5, 3.5015, 3.517]) # microscope control values
-        VoltageTask.ao_channels.add_ao_voltage_chan("Galvo_control/ao0")
+        VoltageTask.ao_channels.add_ao_voltage_chan("Galvo_control/ao1")
         CameraTask.do_channels.add_do_chan("Galvo_control/port1/line3")
         core = bridge.get_core()
 
@@ -408,9 +202,9 @@ def acquisition_loop(stop_signal,stack,exposure):
         stack.put(False)
 
 ## Start live View
-def live_view(stop_signal,output,exposure):
+def live_view(stop_signal,output,exposure,opto,x1,y1,x2,y2):
     processes = [] # initialise processes 
-    proc_live = mp.Process(target=live_loop, args=(stop_signal,output,exposure))
+    proc_live = mp.Process(target=live_loop, args=(stop_signal,output,exposure,opto,x1,y1,x2,y2))
     processes.append(proc_live)
 
     processes.reverse()
@@ -433,14 +227,6 @@ def live_ml_sim(stack,stop_signal,output,exposure):
         process.start()
     for process in processes:
         process.join()        
-    
-   
-if __name__ == '__main__':
-    print('Done')
-    model = load_VSR_model()   
-   
-   
-   
    
    
    

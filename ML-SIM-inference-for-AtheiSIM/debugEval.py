@@ -28,8 +28,8 @@ def GetParams():
   # data
   opt.weights = 'C:/Users/SIM_ADMIN/Documents/GitHub/AtheSIM/ML-SIM-inference-for-AtheiSIM/DIV2K_randomised_3x3_20200317.pth' 
   opt.imageSize = 255
-  opt.root = 'D:/SIM_Data/19-01-2022/split channels/to process'
-  opt.out = 'D:/SIM_Data/19-01-2022/split channels/to process'
+  opt.root = 'F:/SIM_Data/31-01-2022/to process/unrolled/reconstructions/re-process'
+  opt.out = 'F:/SIM_Data/31-01-2022/to process/unrolled/reconstructions/re-process'
 
   # input/output layer options
   opt.norm = 'minmax' # if normalization should not be used
@@ -124,32 +124,57 @@ def EvaluateModel(opt):
             stackSubset = images[stack_idx*opt.nch_in*opt.mean:(stack_idx+1)*opt.nch_in*opt.mean]
             stackSubset = stackSubset-np.amin(stackSubset)
             stackSubset = stackSubset/np.amax(stackSubset)
+            stackSubset[0,:,:] = stackSubset[0,:,:] - np.amin(stackSubset[0,:,:])
+            stackSubset[0,:,:] = stackSubset[0,:,:]/np.amax(stackSubset[0,:,:])
             for f in range(1,opt.nch_in*opt.mean):
                 stackSubset[f,:,:] =  match_histograms(stackSubset[f,:,:],stackSubset[0,:,:])
+                stackSubset[f,:,:] = stackSubset[f,:,:] - np.amin(stackSubset[f,:,:])
+                stackSubset[f,:,:] = stackSubset[f,:,:]/np.amax(stackSubset[f,:,:])
             wf = np.mean(stackSubset,0)
             rolling = np.zeros(wf.shape)
             for slice in range(opt.mean):
 
                 sub_tensor = torch.from_numpy(stackSubset[opt.nch_in*slice:opt.nch_in*(slice+1)])
-                sub_tensor = sub_tensor.unsqueeze(0)
-                sub_tensor = sub_tensor.type(torch.FloatTensor)
                 
-                
+                x_pad = int(np.floor(sub_tensor.shape[2]/2))
+                y_pad = int(np.floor(sub_tensor.shape[1]/2))
                 with torch.no_grad():
                     if opt.cpu:
+                        sub_tensor = sub_tensor.unsqueeze(0)
+                        sub_tensor = sub_tensor.type(torch.FloatTensor)
                         sr = net(sub_tensor)
                     else:
-                        sr = net(sub_tensor.cuda())
-                    sr = sr.cpu()
+                        sub_tensor = sub_tensor.type(torch.FloatTensor)
+                        sub_tensor = sub_tensor.cuda()
+                        
+                        #sub_tensor = torch.fft.fft2(sub_tensor)
+                        #sub_tensor = torch.fft.fftshift(sub_tensor)
+                        #sub_tensor = F.pad(sub_tensor,(x_pad, x_pad, y_pad, y_pad))
+                        #sub_tensor = torch.fft.ifft2(torch.fft.ifftshift(sub_tensor))
+                        #sub_tensor = sub_tensor.real
+                        sub_tensor = sub_tensor.unsqueeze(0)
+                        
+                        
+                        sr = net(sub_tensor)
+
+                        sr = sr.squeeze(0)
+                        sr = torch.fft.fft2(sr)
+                        sr = torch.fft.fftshift(sr)
+                        sr = F.pad(sr,(x_pad, x_pad, y_pad, y_pad))
+                        sr = torch.fft.ifft2(torch.fft.ifftshift(sr))
+                        sr = sr.real                        
+                        sr = sr.cpu()
+
+
 
                     sr = torch.clamp(sr[0],0,1)
                     sr_frame = sr.numpy()
                     sr_frame = np.squeeze(sr_frame)                               
-                rolling += sr_frame
-                #if stack_idx == 0:
-                #    reference = np.copy(sr_frame)
-                #else: 
-                #    sr_frame = match_histograms(sr_frame,reference)
+                # rolling += sr_frame
+                if stack_idx == 0:
+                    reference = np.copy(sr_frame)
+                else: 
+                    sr_frame = match_histograms(sr_frame,reference)
 
             
             try:
@@ -158,7 +183,7 @@ def EvaluateModel(opt):
                 tifffile.imsave(svPath,wf,append=True)
 
 
-                rolling = (rolling * 65000/opt.mean).astype('uint16')
+                rolling = (sr_frame * 65000).astype('uint16')
                 svPath = opt.out + '/' + filename +'_sr.tif'
                 tifffile.imsave(svPath,rolling,append=True)
             except:
