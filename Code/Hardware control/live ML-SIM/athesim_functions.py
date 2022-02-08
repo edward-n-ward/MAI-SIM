@@ -65,7 +65,7 @@ def load_model():
     return net
 
 ## ML-SIM reconstruction
-def ml_reconstruction(stack,output):
+def ml_reconstruction(stack,output,opto,x1,y1,x2,y2):
     net = load_model()
     while True:
         with torch.no_grad():
@@ -74,20 +74,50 @@ def ml_reconstruction(stack,output):
                 if isinstance(pixels, bool):
                         break
                 else:
+                    pixels = pixels.astype(float)
                     # run the reconstruction function 
-                    data = torch.from_numpy(pixels)
-                    data = torch.swapaxes(data,0,2)
-                    data = data.unsqueeze(0)
-                    data = data.type(torch.FloatTensor)
-                    data = data.cuda()
-                    data = data - torch.amin(data)
-                    data = data/torch.amax(data)
-                    sr = net(data.cuda())
+                    if opto == 1:
+                        result = np.zeros((512,512,2))
+                        data = torch.from_numpy(pixels)
+                        data = data.cuda()
+                        temp = data[np.clip(y1-y2,0,None):np.clip(y1-y2,0,None)+512,0:512,:]
+                        temp = torch.swapaxes(temp,0,2)
+                        temp = temp.unsqueeze(0)
+                        temp = temp.type(torch.FloatTensor)
+                        temp = temp - torch.amin(temp)
+                        temp = temp/torch.amax(temp)
+                        sr = net(temp.cuda())
+                        srframe = sr.cpu()
+                        srframe = srframe.numpy()
+                        result[:,:,0] = np.squeeze(srframe)
 
-                    sr = sr.cpu()
-                    sr_frame = sr.numpy()
-                    sr_frame = np.squeeze(sr_frame) 
-                    output.put(sr_frame)
+                        temp = data[np.clip(y2-y1,0,None):np.clip(y2-y1,0,None)+512,x2-x1:x2-x1+512,:]
+                        temp = torch.swapaxes(temp,0,2)
+                        temp = temp.unsqueeze(0)
+                        temp = temp.type(torch.FloatTensor)
+                        temp = temp - torch.amin(temp)
+                        temp = temp/torch.amax(temp)
+                        sr = net(temp.cuda())
+                        srframe = sr.cpu()
+                        srframe = srframe.numpy()
+                        result[:,:,1] = np.squeeze(srframe)
+                                                                        
+                        output.put(result)    
+
+                    else:
+                        data = torch.from_numpy(pixels)
+                        data = torch.swapaxes(data,0,2)
+                        data = data.unsqueeze(0)
+                        data = data.type(torch.FloatTensor)
+                        data = data.cuda()
+                        data = data - torch.amin(data)
+                        data = data/torch.amax(data)
+                        sr = net(data.cuda())
+
+                        sr = sr.cpu()
+                        sr_frame = sr.numpy()
+                        sr_frame = np.squeeze(sr_frame) 
+                        output.put(sr_frame)
     
     output.put(False)
 
@@ -137,10 +167,10 @@ def live_loop(stop_signal,output,exposure,opto,x1,y1,x2,y2):
                         pixels = np.squeeze(np.reshape(result.pix,newshape=[-1, result.tags["Height"], result.tags["Width"]],)) # reshape image data
                         pixels = pixels.astype('float64')
                         if opto == 1:
-                            result = np.zeros((512,512,2))
-                            result[:,:,0] = pixels[np.clip(y1-y2,0,None):np.clip(y1-y2,0,None)+512,0:512]
-                            result[:,:,1] = pixels[np.clip(y2-y1,0,None):np.clip(y2-y1,0,None)+512,x2-x1:x2-x1+512]
-                            output.put(result)
+                            merged = np.zeros((512,512,2))
+                            merged[:,:,0] = pixels[np.clip(y1-y2,0,None):np.clip(y1-y2,0,None)+512,0:512]
+                            merged[:,:,1] = pixels[np.clip(y2-y1,0,None):np.clip(y2-y1,0,None)+512,x2-x1:x2-x1+512]
+                            output.put(merged)
                         else:       
                             output.put(pixels)
                    
@@ -154,7 +184,7 @@ def live_loop(stop_signal,output,exposure,opto,x1,y1,x2,y2):
 def acquisition_loop(stop_signal,stack,exposure):
     print('starting acquisition')
     stop_signal.put(True)
-    pixels = np.zeros((512,512,9))
+    
     with nidaqmx.Task() as VoltageTask, nidaqmx.Task() as CameraTask, Bridge() as bridge: # sorts out camera and microscope control
         voltages = np.array([0.95, 0.9507, 0.9514, 2.25, 2.2513, 2.2526, 3.5, 3.5015, 3.517]) # microscope control values
         VoltageTask.ao_channels.add_ao_voltage_chan("Galvo_control/ao1")
@@ -193,8 +223,14 @@ def acquisition_loop(stop_signal,stack,exposure):
                         while core.get_remaining_image_count() == 0: # wait until image is available
                             time.sleep(0.001)                
                         result = core.get_last_tagged_image() # get image data into python
-                        pixels[:,:,i] = np.squeeze(np.reshape(result.pix,newshape=[-1, result.tags["Height"], result.tags["Width"]],)) # reshape image data
-                    stack.put(pixels)
+                        pixels = np.squeeze(np.reshape(result.pix,newshape=[-1, result.tags["Height"], result.tags["Width"]],)) # reshape image data
+                        if i == 0:
+                            merged = np.zeros([pixels.shape[0],pixels.shape[1],9])
+                            merged[:,:,0] = pixels
+                        else:
+                            merged[:,:,i] = pixels
+
+                    stack.put(merged)
                     
         core.stop_sequence_acquisition() # stop the camera
         CameraTask.write(True) # make sure camera has stoppped by requesting a final unused image
@@ -216,11 +252,11 @@ def live_view(stop_signal,output,exposure,opto,x1,y1,x2,y2):
         process.join()
 
 ## Start live ML-SIM
-def live_ml_sim(stack,stop_signal,output,exposure):
+def live_ml_sim(stack,stop_signal,output,exposure,opto,x1,y1,x2,y2):
     processes = [] # initialise processes 
     proc_live = mp.Process(target=acquisition_loop, args=(stop_signal,stack,exposure))
     processes.append(proc_live)
-    proc_recon = mp.Process(target=ml_reconstruction, args=(stack,output))
+    proc_recon = mp.Process(target=ml_reconstruction, args=(stack,output,opto,x1,y1,x2,y2))
     processes.append(proc_recon)
     processes.reverse()
 

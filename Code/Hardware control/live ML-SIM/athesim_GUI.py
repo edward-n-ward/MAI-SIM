@@ -167,15 +167,42 @@ class ML_App:
 
 
         exposure_time = self.expTime.get()
-        opto = self.opto.get()
-        self.live_process = mp.Process(target= asf.live_view, args = (self.stop_signal,self.output,exposure_time,opto,x1,y1,x2,y2))
+        self.live_process = mp.Process(target= asf.live_view, args = (self.stop_signal,self.output,exposure_time,optosplit,x1,y1,x2,y2))
         self.live_process.start()
         self.plotting_process = threading.Thread(target= self.plot)
         self.plotting_process.start()
 
     def start_ml_sim(self):
+        optosplit = self.opto.get()
+        if optosplit == 1:
+            x1 = self.x1.get() # get ROI variables from the GUI input
+            y1 = self.y1.get()
+            x2 = self.x2.get() # get ROI variables from the GUI input
+            y2 = self.y2.get()
+            with Bridge() as bridge: # load camera control library
+                xmin = min(x1,x2)
+                xmax = max(x1,x2)
+                width = xmax-xmin+512
+                ymin = min(y1,y2)
+                ymax = max(y1,y2)
+                height = ymax-ymin+512
+                core = bridge.get_core()
+                ROI = [xmin, ymin, width, height] # build ROI 
+                core.set_roi(*ROI) # set ROI  
+                print('Successfully set ROI for optosplit')
+        else:
+            with Bridge() as bridge: # load camera control library
+                x1 = self.xOff.get() # get ROI variables from the GUI input
+                y1 = self.yOff.get()
+                x2 = 0
+                y2 = 0
+                core = bridge.get_core()
+                ROI = [x1, y1, 512, 512] # build ROI 
+                core.set_roi(*ROI) # set ROI  
+                print('Successfully set ROI')
+
         exposure_time = self.expTime.get()
-        self.live_process = mp.Process(target= asf.live_ml_sim, args = (self.stack,self.stop_signal,self.output,exposure_time))
+        self.live_process = mp.Process(target= asf.live_ml_sim, args = (self.stack,self.stop_signal,self.output,exposure_time,optosplit,x1,y1,x2,y2))
         self.live_process.start()
         self.plotting_process = threading.Thread(target= self.plot)
         self.plotting_process.start()    
