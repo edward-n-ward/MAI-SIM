@@ -14,7 +14,7 @@ def GetParams():
   opt = argparse.Namespace()
 
   # data
-  opt.weights = 'C:/Users/SIM_ADMIN/Documents/GitHub/AtheSIM/ML-SIM-inference-for-AtheiSIM/DIV2K_randomised_3x3_20200317.pth' 
+  opt.weights = '0216_SIMRec_0214_rndAll_rcan_continued.pth' 
   
   # input/output layer options
   opt.task = 'simin_gtout'
@@ -27,7 +27,7 @@ def GetParams():
   opt.narch = 0
   opt.n_resgroups = 3
   opt.n_resblocks = 10
-  opt.n_feats = 96
+  opt.n_feats = 48
   opt.reduction = 16
     
   return opt
@@ -65,7 +65,7 @@ def load_model():
     return net
 
 ## ML-SIM reconstruction
-def ml_reconstruction(stack,output,opto,x1,y1,x2,y2):
+def ml_reconstruction(stack,output,opto,x1,y1,x2,y2,rchild_max,rchild_min):
     net = load_model()
     while True:
         with torch.no_grad():
@@ -75,6 +75,8 @@ def ml_reconstruction(stack,output,opto,x1,y1,x2,y2):
                         break
                 else:
                     pixels = pixels.astype(float)
+                    iMax = rchild_max.value 
+                    iMin = rchild_min.value
                     # run the reconstruction function 
                     if opto == 1:
                         result = np.zeros((512,512,2))
@@ -84,9 +86,11 @@ def ml_reconstruction(stack,output,opto,x1,y1,x2,y2):
                         temp = torch.swapaxes(temp,0,2)
                         temp = temp.unsqueeze(0)
                         temp = temp.type(torch.FloatTensor)
+                        temp = torch.clamp(temp,iMin,iMax)
                         temp = temp - torch.amin(temp)
                         temp = temp/torch.amax(temp)
                         sr = net(temp.cuda())
+                        sr = torch.clamp(sr,0,1)
                         srframe = sr.cpu()
                         srframe = srframe.numpy()
                         result[:,:,0] = np.squeeze(srframe)
@@ -95,26 +99,32 @@ def ml_reconstruction(stack,output,opto,x1,y1,x2,y2):
                         temp = torch.swapaxes(temp,0,2)
                         temp = temp.unsqueeze(0)
                         temp = temp.type(torch.FloatTensor)
+                        temp = torch.clamp(temp,iMin,iMax)
                         temp = temp - torch.amin(temp)
                         temp = temp/torch.amax(temp)
                         sr = net(temp.cuda())
+                        sr = torch.clamp(sr,0,1)
                         srframe = sr.cpu()
                         srframe = srframe.numpy()
                         result[:,:,1] = np.squeeze(srframe)
                                                                         
                         output.put(result)    
 
-                    else:
+                    else:                    
                         data = torch.from_numpy(pixels)
                         data = torch.swapaxes(data,0,2)
                         data = data.unsqueeze(0)
                         data = data.type(torch.FloatTensor)
                         data = data.cuda()
+                        data = torch.clamp(data,iMin,iMax)
                         data = data - torch.amin(data)
                         data = data/torch.amax(data)
                         sr = net(data.cuda())
-
+                        sr = torch.clamp(sr,0,1)
+                        sr = torch.squeeze(sr)
+                        sr = torch.swapaxes(sr,0,1)
                         sr = sr.cpu()
+                        
                         sr_frame = sr.numpy()
                         sr_frame = np.squeeze(sr_frame) 
                         output.put(sr_frame)
@@ -122,12 +132,13 @@ def ml_reconstruction(stack,output,opto,x1,y1,x2,y2):
     output.put(False)
 
 ## Live view
-def live_loop(stop_signal,output,exposure,opto,x1,y1,x2,y2):
+def live_loop(stop_signal,output,exposure,opto,x1,y1,x2,y2,rchild_max,rchild_min):
     print('starting acquisition')
 
     stop_signal.put(True)
     with nidaqmx.Task() as VoltageTask, nidaqmx.Task() as CameraTask, Bridge() as bridge: # sorts out camera and microscope control
-        voltages = np.array([0.95, 0.9508, 0.9516, 2.2, 2.2025, 2.205, 3.45, 3.454, 3.4548]) # microscope control values
+        voltages = np.array([0.95, 0.9508, 0.9516, 2.25, 2.2025, 2.205, 3.45, 3.454, 3.4548]) # microscope control values
+        waits = np.array([0.08,0.008,0.008,0.06,0.008,0.008,0.06,0.008,0.008])
         VoltageTask.ao_channels.add_ao_voltage_chan("Galvo_control/ao1")
         CameraTask.do_channels.add_do_chan("Galvo_control/port1/line3")
         core = bridge.get_core()
@@ -156,7 +167,7 @@ def live_loop(stop_signal,output,exposure,opto,x1,y1,x2,y2):
                 if output.empty():
                     for i in range(9):
                         VoltageTask.write(voltages[i]) # move microscope
-                        time.sleep(0.05)     
+                        time.sleep(waits[i])     
 
                         CameraTask.write(True) # start acquisition
                         time.sleep(exposure/1000)
@@ -171,7 +182,10 @@ def live_loop(stop_signal,output,exposure,opto,x1,y1,x2,y2):
                             merged[:,:,0] = pixels[np.clip(y1-y2,0,None):np.clip(y1-y2,0,None)+512,0:512]
                             merged[:,:,1] = pixels[np.clip(y2-y1,0,None):np.clip(y2-y1,0,None)+512,x2-x1:x2-x1+512]
                             output.put(merged)
-                        else:       
+                        else:      
+                            iMax = rchild_max.value 
+                            iMin = rchild_min.value
+                            pixels = np.clip(pixels, iMin,iMax)
                             output.put(pixels)
                    
         core.stop_sequence_acquisition() # stop the camera
@@ -186,7 +200,8 @@ def acquisition_loop(stop_signal,stack,exposure):
     stop_signal.put(True)
     
     with nidaqmx.Task() as VoltageTask, nidaqmx.Task() as CameraTask, Bridge() as bridge: # sorts out camera and microscope control
-        voltages = np.array([0.95, 0.9507, 0.9514, 2.25, 2.2513, 2.2526, 3.5, 3.5015, 3.517]) # microscope control values
+        voltages = np.array([0.95, 0.9508, 0.9516, 2.25, 2.2025, 2.205, 3.45, 3.454, 3.4548]) # microscope control values
+        waits = np.array([0.08,0.008,0.008,0.06,0.008,0.008,0.06,0.008,0.008])
         VoltageTask.ao_channels.add_ao_voltage_chan("Galvo_control/ao1")
         CameraTask.do_channels.add_do_chan("Galvo_control/port1/line3")
         core = bridge.get_core()
@@ -215,7 +230,7 @@ def acquisition_loop(stop_signal,stack,exposure):
                 if stack.empty():
                     for i in range(9):
                         VoltageTask.write(voltages[i]) # move microscope
-                        time.sleep(0.05)     
+                        time.sleep(waits[i])     
 
                         CameraTask.write(True) # start acquisition
                         time.sleep(exposure/1000)
@@ -239,9 +254,9 @@ def acquisition_loop(stop_signal,stack,exposure):
         stack.put(False)
 
 ## Start live View
-def live_view(stop_signal,output,exposure,opto,x1,y1,x2,y2):
+def live_view(stop_signal,output,exposure,opto,x1,y1,x2,y2,rchild_max,rchild_min):
     processes = [] # initialise processes 
-    proc_live = mp.Process(target=live_loop, args=(stop_signal,output,exposure,opto,x1,y1,x2,y2))
+    proc_live = mp.Process(target=live_loop, args=(stop_signal,output,exposure,opto,x1,y1,x2,y2,rchild_max,rchild_min))
     processes.append(proc_live)
 
     processes.reverse()
@@ -252,11 +267,11 @@ def live_view(stop_signal,output,exposure,opto,x1,y1,x2,y2):
         process.join()
 
 ## Start live ML-SIM
-def live_ml_sim(stack,stop_signal,output,exposure,opto,x1,y1,x2,y2):
+def live_ml_sim(stack,stop_signal,output,exposure,opto,x1,y1,x2,y2,rchild_max,rchild_min):
     processes = [] # initialise processes 
     proc_live = mp.Process(target=acquisition_loop, args=(stop_signal,stack,exposure))
     processes.append(proc_live)
-    proc_recon = mp.Process(target=ml_reconstruction, args=(stack,output,opto,x1,y1,x2,y2))
+    proc_recon = mp.Process(target=ml_reconstruction, args=(stack,output,opto,x1,y1,x2,y2,rchild_max,rchild_min))
     processes.append(proc_recon)
     processes.reverse()
 

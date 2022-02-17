@@ -16,7 +16,7 @@ class ML_App:
 
         self.master = master
         tabControl = ttk.Notebook(self.master)
-        master.geometry("780x600") # size of gui
+        master.geometry("780x580") # size of gui
         self.tab1 = ttk.Frame(tabControl)
         self.tab2 = ttk.Frame(tabControl)
         tabControl.add(self.tab1, text ='Acquisition control')
@@ -96,22 +96,42 @@ class ML_App:
         self.update_ROI.place(x=15, y=220)
 
         self.expTime = tk.IntVar()
-        self.expTime.set(30)
+        self.expTime.set(80)
         self.exposure = tk.Entry(self.tab1,textvariable=self.expTime) # exposure time field
         self.exposure.place(x=20, y=130, width=50)
+
+        self.iMin = tk.IntVar()
+        self.iMin.set(00)
+        self.limLow = tk.Entry(self.tab1,textvariable=self.iMin) # exposure time field
+        self.limLow.place(x=500, y=520, width=30)
+
+        self.iMax = tk.IntVar()
+        self.iMax.set(100)
+        self.limHigh = tk.Entry(self.tab1,textvariable=self.iMax) # exposure time field
+        self.limHigh.place(x=535, y=520, width=30)
+
+        self.rMin = tk.IntVar()
+        self.rMin.set(50)
+        self.rlimLow = tk.Entry(self.tab1,textvariable=self.rMin) # exposure time field
+        self.rlimLow.place(x=400, y=520, width=30)
+
+        self.rMax = tk.IntVar()
+        self.rMax.set(1000)
+        self.rlimHigh = tk.Entry(self.tab1,textvariable=self.rMax) # exposure time field
+        self.rlimHigh.place(x=435, y=520, width=30)
 
         self.exposure_label = tk.Label(self.tab1, text = "Exposure time (ms)")
         self.exposure_label.place(x = 15,y = 110)
 
         self.xOff = tk.IntVar()
-        self.xOff.set(30)
+        self.xOff.set(710)
         self.xoffset = tk.Entry(self.tab2,textvariable=self.xOff) # ROI input
         self.xoffset.place(x=20, y=174, width=50)
         self.xoffset_label = tk.Label(self.tab2, text = "ROI offset")
         self.xoffset_label.place(x = 15,y = 154)
 
         self.yOff = tk.IntVar()
-        self.yOff.set(30)
+        self.yOff.set(700)
         self.yoffset = tk.Entry(self.tab2,textvariable=self.yOff) # ROI input
         self.yoffset.place(x=20, y=195, width=50)
         
@@ -167,9 +187,13 @@ class ML_App:
 
 
         exposure_time = self.expTime.get()
-        self.live_process = mp.Process(target= asf.live_view, args = (self.stop_signal,self.output,exposure_time,optosplit,x1,y1,x2,y2))
+        child_max = mp.Value('d',1000)
+        child_min = mp.Value('d',1)
+        rchild_max = mp.Value('d',1000)
+        rchild_min = mp.Value('d',1)
+        self.live_process = mp.Process(target= asf.live_view, args = (self.stop_signal,self.output,exposure_time,optosplit,x1,y1,x2,y2,rchild_max,rchild_min))
         self.live_process.start()
-        self.plotting_process = threading.Thread(target= self.plot)
+        self.plotting_process = threading.Thread(target= self.plot, args = (child_max,child_min,rchild_max,rchild_min))
         self.plotting_process.start()
 
     def start_ml_sim(self):
@@ -202,9 +226,15 @@ class ML_App:
                 print('Successfully set ROI')
 
         exposure_time = self.expTime.get()
-        self.live_process = mp.Process(target= asf.live_ml_sim, args = (self.stack,self.stop_signal,self.output,exposure_time,optosplit,x1,y1,x2,y2))
+        child_max = mp.Value('d',1000)
+        child_min = mp.Value('d',1)
+        rchild_max = mp.Value('d',1000)
+        rchild_min = mp.Value('d',1)
+
+        self.live_process = mp.Process(target= asf.live_ml_sim, args = (self.stack,self.stop_signal,self.output,exposure_time,optosplit,x1,y1,x2,y2,rchild_max,rchild_min))
         self.live_process.start()
-        self.plotting_process = threading.Thread(target= self.plot)
+
+        self.plotting_process = threading.Thread(target= self.plot, args = (child_max,child_min,rchild_max,rchild_min))
         self.plotting_process.start()    
 
     def quit_gui(self):
@@ -215,8 +245,19 @@ class ML_App:
     def stop_live(self):
         self.stop_signal.put(False)
 
-    def plot(self):
+    def plot(self,child_max,child_min,rchild_max,rchild_min):
         while True: 
+
+            rMin = self.rMin.get()
+            rchild_min.value = rMin
+            rMax = self.rMax.get()
+            rchild_max.value = rMax
+
+            iMax = self.iMax.get()
+            child_max.value = iMax
+            iMin = self.iMin.get()
+            child_min.value = iMin
+
             if not self.output.empty():
                 image_array = self.output.get() # empty data from reconstruction pool
                 if isinstance(image_array, bool):
