@@ -1,8 +1,8 @@
-import nidaqmx # microscope control
+#import nidaqmx # microscope control
 import numpy as np
 import time
 import torch.multiprocessing as mp
-from pycromanager import Bridge
+#from pycromanager import Bridge
 import torch
 from models import *
 import argparse
