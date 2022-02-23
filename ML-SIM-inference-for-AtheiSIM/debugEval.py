@@ -16,8 +16,6 @@ from skimage import io
 from skimage.exposure import match_histograms
 import tifffile
 from models import *
-
-import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 
@@ -26,10 +24,10 @@ def GetParams():
   opt = argparse.Namespace()
 
   # data
-  opt.weights = 'C:/Users/SIM_ADMIN/Documents/GitHub/AtheSIM/ML-SIM-inference-for-AtheiSIM/DIV2K_randomised_3x3_20200317.pth' 
+  opt.weights = 'DIV2K_randomised_3x3_20200317.pth' 
   opt.imageSize = 255
-  opt.root = 'F:/SIM_Data/31-01-2022/to process/unrolled/reconstructions/re-process'
-  opt.out = 'F:/SIM_Data/31-01-2022/to process/unrolled/reconstructions/re-process'
+  opt.root = 'D:/SIM Data/10-02-2022/to process/lyso/unrolled/to process'
+  opt.out = 'D:/SIM Data/10-02-2022/to process/lyso/unrolled/to process'
 
   # input/output layer options
   opt.norm = 'minmax' # if normalization should not be used
@@ -124,10 +122,7 @@ def EvaluateModel(opt):
             stackSubset = images[stack_idx*opt.nch_in*opt.mean:(stack_idx+1)*opt.nch_in*opt.mean]
             stackSubset = stackSubset-np.amin(stackSubset)
             stackSubset = stackSubset/np.amax(stackSubset)
-            stackSubset[0,:,:] = stackSubset[0,:,:] - np.amin(stackSubset[0,:,:])
-            stackSubset[0,:,:] = stackSubset[0,:,:]/np.amax(stackSubset[0,:,:])
-            for f in range(1,opt.nch_in*opt.mean):
-                stackSubset[f,:,:] =  match_histograms(stackSubset[f,:,:],stackSubset[0,:,:])
+            for f in range(0,opt.nch_in*opt.mean):
                 stackSubset[f,:,:] = stackSubset[f,:,:] - np.amin(stackSubset[f,:,:])
                 stackSubset[f,:,:] = stackSubset[f,:,:]/np.amax(stackSubset[f,:,:])
             wf = np.mean(stackSubset,0)
@@ -157,12 +152,12 @@ def EvaluateModel(opt):
                         
                         sr = net(sub_tensor)
 
-                        sr = sr.squeeze(0)
-                        sr = torch.fft.fft2(sr)
-                        sr = torch.fft.fftshift(sr)
-                        sr = F.pad(sr,(x_pad, x_pad, y_pad, y_pad))
-                        sr = torch.fft.ifft2(torch.fft.ifftshift(sr))
-                        sr = sr.real                        
+#                       sr = sr.squeeze(0)
+#                       sr = torch.fft.fft2(sr)
+#                       sr = torch.fft.fftshift(sr)
+#                       sr = F.pad(sr,(x_pad, x_pad, y_pad, y_pad))
+#                       sr = torch.fft.ifft2(torch.fft.ifftshift(sr))
+#                       sr = sr.real                        
                         sr = sr.cpu()
 
 
