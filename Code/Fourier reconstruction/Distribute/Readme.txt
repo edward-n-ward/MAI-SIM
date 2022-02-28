@@ -18,6 +18,9 @@ and includes code to allow for more advanced SIM data analysis and pre-/post-pro
 While this app may be useful it is undergoing continual update and bug fixes and should
 not be consider reliable for all reconstructions/ inputs.
 
+Also included are two helper functions, splitChannel.m and unrollSIMstack.m, which can be 
+used to split multi-colour images acquired with an optosplit and unroll a stack of SIM 
+images acquired with the 12-frame rolling method.
 
 
 References:
