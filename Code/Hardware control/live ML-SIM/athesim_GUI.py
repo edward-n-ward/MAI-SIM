@@ -15,13 +15,15 @@ class ML_App:
     def __init__(self,master):
 
         self.master = master
+        master.title('Live ML-SIM')
+        master.geometry("700x640") # size of gui
         tabControl = ttk.Notebook(self.master)
-        master.geometry("780x580") # size of gui
+        
         self.tab1 = ttk.Frame(tabControl)
         self.tab2 = ttk.Frame(tabControl)
         tabControl.add(self.tab1, text ='Acquisition control')
         tabControl.add(self.tab2, text ='Hardware properties')
-        tabControl.pack(expand = 1, fill ="both")
+        tabControl.place(x = 5,y = 60, width = 690, height = 575)
 
         self.stop_signal = mp.Queue()
         self.output = mp.Queue()
@@ -60,14 +62,32 @@ class ML_App:
         self.xco2.place(x=15, y=303, width=25)
         self.x2_label = tk.Label(self.tab2, text = "x2")
         self.x2_label.place(x = 40,y=303)  
+
+        self.y3 = tk.IntVar()
+        self.y3.set(695)
+        self.yco3 = tk.Entry(self.tab2,textvariable=self.y3) # Y3 field
+        self.yco3.place(x=75, y=326, width=25)
+        self.y3_label = tk.Label(self.tab2, text = "y3")
+        self.y3_label.place(x = 100,y=326)  
+
+        self.x3 = tk.IntVar()
+        self.x3 .set(695)
+        self.xco3 = tk.Entry(self.tab2,textvariable=self.x3) # X3 field
+        self.xco3.place(x=15, y=326, width=25)
+        self.x3_label = tk.Label(self.tab2, text = "x3 ")
+        self.x3_label.place(x = 40,y=326) 
+
+
+
+
         self.opto_text = tk.Label(self.tab2, text = "Optosplit parameters")
         self.opto_text.place(x = 15,y=257)         
 
         
-        self.live = tk.Button(self.tab1, width=10, text='Start', command = self.start_live)
-        self.live.place(x=15, y=10)
+        self.live = tk.Button(self.tab1, width=10, text='Preview', command = self.start_live)
+        self.live.place(x=15, y=20)
         self.Stop_live = tk.Button(self.tab1, width=10, text='Stop', command = self.stop_live)
-        self.Stop_live.place(x=15, y=40)
+        self.Stop_live.place(x=15, y=50)
 
         blank = np.zeros((512,512))
         blank = blank.astype('uint8')
@@ -75,22 +95,26 @@ class ML_App:
         self.panel = tk.Label(self.tab1, image=img)
         self.panel.configure(image=img) # update the GUI element
         self.panel.image = img  
-        self.panel.pack(side = "top")
+        self.panel.place(x=150, y=20)
 
-        imgo = Image.open('C:/Users/SIM_ADMIN/Documents/GitHub/AtheSIM/Code/Hardware control/live ML-SIM/optosplit.jpg')
+        imgo = Image.open('optosplit.jpg')
         test =  ImageTk.PhotoImage(imgo)
         self.optosplit = tk.Label(self.tab2, image=test)
         self.optosplit.image = test  
-        self.optosplit.pack(side = "top")
+        self.optosplit.place(x=150, y=20)
 
-        self.live_decon = tk.Button(self.tab1,width=10, text='Live ML-SIM', command = self.start_live) # start live preview
-        self.live_decon.place(x=15, y=250)
+        imgo = Image.open('Clipboard.png')
+        test =  ImageTk.PhotoImage(imgo)
+        self.logo = tk.Label(image=test)
+        self.logo.image = test  
+        self.logo.place(x=3, y=3)
 
-        self.quit_button = tk.Button(self.tab1,width=10, text='Quit',command=self.quit_gui) # quit the GUI
-        self.quit_button.place(x=15, y=250)       
+
+        self.quit_button = tk.Button(self.tab1,width=10, fg = "red", text='Quit',command=self.quit_gui) # quit the GUI
+        self.quit_button.place(x=15, y=190)       
 
         self.start_live_decon = tk.Button(self.tab1,width=10, text='Live ML-SIM', command = self.start_ml_sim) # start live sim
-        self.start_live_decon.place(x=15, y=280)
+        self.start_live_decon.place(x=15, y=80)
 
         self.update_ROI = tk.Button(self.tab2,width=10, text='Update ROI') #update camera ROI
         self.update_ROI.place(x=15, y=220)
@@ -98,30 +122,34 @@ class ML_App:
         self.expTime = tk.IntVar()
         self.expTime.set(80)
         self.exposure = tk.Entry(self.tab1,textvariable=self.expTime) # exposure time field
-        self.exposure.place(x=20, y=130, width=50)
+        self.exposure.place(x=15, y=140, width=50)
 
         self.iMin = tk.IntVar()
         self.iMin.set(00)
-        self.limLow = tk.Entry(self.tab1,textvariable=self.iMin) # exposure time field
-        self.limLow.place(x=500, y=520, width=30)
+        self.limLow = tk.Entry(self.tab1,textvariable=self.iMin) # Display range field
+        self.limLow.place(x=15, y=363, width=30)
 
         self.iMax = tk.IntVar()
         self.iMax.set(100)
-        self.limHigh = tk.Entry(self.tab1,textvariable=self.iMax) # exposure time field
-        self.limHigh.place(x=535, y=520, width=30)
+        self.limHigh = tk.Entry(self.tab1,textvariable=self.iMax) # Display range field
+        self.limHigh.place(x=50, y=363, width=30)
 
         self.rMin = tk.IntVar()
         self.rMin.set(50)
-        self.rlimLow = tk.Entry(self.tab1,textvariable=self.rMin) # exposure time field
-        self.rlimLow.place(x=400, y=520, width=30)
+        self.rlimLow = tk.Entry(self.tab1,textvariable=self.rMin) # Reconstruction range field
+        self.rlimLow.place(x=15, y=423, width=30)
 
         self.rMax = tk.IntVar()
         self.rMax.set(1000)
-        self.rlimHigh = tk.Entry(self.tab1,textvariable=self.rMax) # exposure time field
-        self.rlimHigh.place(x=435, y=520, width=30)
+        self.rlimHigh = tk.Entry(self.tab1,textvariable=self.rMax) # Reconstruction range field
+        self.rlimHigh.place(x=50, y=423, width=30)
 
+        self.display_label = tk.Label(self.tab1, text = "Display range")
+        self.display_label.place(x = 13,y = 340)
+        self.display_label = tk.Label(self.tab1, text = "Reconstruction range")
+        self.display_label.place(x = 13,y = 400)
         self.exposure_label = tk.Label(self.tab1, text = "Exposure time (ms)")
-        self.exposure_label.place(x = 15,y = 110)
+        self.exposure_label.place(x = 13,y = 117)
 
         self.xOff = tk.IntVar()
         self.xOff.set(710)
@@ -156,7 +184,8 @@ class ML_App:
                 core.set_roi(*ROI) # set ROI    
         
     def start_live(self):
-        
+        self.start_live_decon["state"] == DISABLED
+        self.quit_button["state"] == DISABLED
         optosplit = self.opto.get()
         if optosplit == 1:
             x1 = self.x1.get() # get ROI variables from the GUI input
@@ -197,6 +226,8 @@ class ML_App:
         self.plotting_process.start()
 
     def start_ml_sim(self):
+        self.live["state"] == DISABLED
+        self.quit_button["state"] == DISABLED
         optosplit = self.opto.get()
         if optosplit == 1:
             x1 = self.x1.get() # get ROI variables from the GUI input
@@ -244,6 +275,9 @@ class ML_App:
 
     def stop_live(self):
         self.stop_signal.put(False)
+        self.start_live_decon["state"] == NORMAL
+        self.live["state"] == NORMAL
+        self.quit_button["state"] == NORMAL
 
     def plot(self,child_max,child_min,rchild_max,rchild_min):
         while True: 

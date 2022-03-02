@@ -82,7 +82,7 @@ def ml_reconstruction(stack,output,opto,x1,y1,x2,y2,rchild_max,rchild_min):
                         result = np.zeros((512,512,2))
                         data = torch.from_numpy(pixels)
                         data = data.cuda()
-                        temp = data[np.clip(y1-y2,0,None):np.clip(y1-y2,0,None)+512,0:512,:]
+                        temp = data[x1:x1+511,y1:y1+511,:]
                         temp = torch.swapaxes(temp,0,2)
                         temp = temp.unsqueeze(0)
                         temp = temp.type(torch.FloatTensor)
@@ -95,7 +95,7 @@ def ml_reconstruction(stack,output,opto,x1,y1,x2,y2,rchild_max,rchild_min):
                         srframe = srframe.numpy()
                         result[:,:,0] = np.squeeze(srframe)
 
-                        temp = data[np.clip(y2-y1,0,None):np.clip(y2-y1,0,None)+512,x2-x1:x2-x1+512,:]
+                        temp = data[x2:x2+511,y2:y2+511,:]
                         temp = torch.swapaxes(temp,0,2)
                         temp = temp.unsqueeze(0)
                         temp = temp.type(torch.FloatTensor)
@@ -132,7 +132,7 @@ def ml_reconstruction(stack,output,opto,x1,y1,x2,y2,rchild_max,rchild_min):
     output.put(False)
 
 ## Live view
-def live_loop(stop_signal,output,exposure,opto,x1,y1,x2,y2,rchild_max,rchild_min):
+def live_loop(stop_signal,output,exposure,opto,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min):
     print('starting acquisition')
 
     stop_signal.put(True)
@@ -179,8 +179,9 @@ def live_loop(stop_signal,output,exposure,opto,x1,y1,x2,y2,rchild_max,rchild_min
                         pixels = pixels.astype('float64')
                         if opto == 1:
                             merged = np.zeros((512,512,2))
-                            merged[:,:,0] = pixels[np.clip(y1-y2,0,None):np.clip(y1-y2,0,None)+512,0:512]
-                            merged[:,:,1] = pixels[np.clip(y2-y1,0,None):np.clip(y2-y1,0,None)+512,x2-x1:x2-x1+512]
+                            merged[:,:,0] = pixels[x1:x1+511,y1:y1+511]
+                            merged[:,:,1] = pixels[x2:x2+511,y2:y2+511]
+                            merged[:,:,2] = pixels[x3:x3+511,y3:y3+511]
                             output.put(merged)
                         else:      
                             iMax = rchild_max.value 
@@ -254,9 +255,9 @@ def acquisition_loop(stop_signal,stack,exposure):
         stack.put(False)
 
 ## Start live View
-def live_view(stop_signal,output,exposure,opto,x1,y1,x2,y2,rchild_max,rchild_min):
+def live_view(stop_signal,output,exposure,opto,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min):
     processes = [] # initialise processes 
-    proc_live = mp.Process(target=live_loop, args=(stop_signal,output,exposure,opto,x1,y1,x2,y2,rchild_max,rchild_min))
+    proc_live = mp.Process(target=live_loop, args=(stop_signal,output,exposure,opto,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min))
     processes.append(proc_live)
 
     processes.reverse()
@@ -267,11 +268,11 @@ def live_view(stop_signal,output,exposure,opto,x1,y1,x2,y2,rchild_max,rchild_min
         process.join()
 
 ## Start live ML-SIM
-def live_ml_sim(stack,stop_signal,output,exposure,opto,x1,y1,x2,y2,rchild_max,rchild_min):
+def live_ml_sim(stack,stop_signal,output,exposure,opto,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min):
     processes = [] # initialise processes 
     proc_live = mp.Process(target=acquisition_loop, args=(stop_signal,stack,exposure))
     processes.append(proc_live)
-    proc_recon = mp.Process(target=ml_reconstruction, args=(stack,output,opto,x1,y1,x2,y2,rchild_max,rchild_min))
+    proc_recon = mp.Process(target=ml_reconstruction, args=(stack,output,opto,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min))
     processes.append(proc_recon)
     processes.reverse()
 
