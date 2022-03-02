@@ -65,7 +65,7 @@ def load_model():
     return net
 
 ## ML-SIM reconstruction
-def ml_reconstruction(stack,output,opto,x1,y1,x2,y2,rchild_max,rchild_min):
+def ml_reconstruction(stack,output,opto,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min,R,G,B):
     net = load_model()
     while True:
         with torch.no_grad():
@@ -79,34 +79,48 @@ def ml_reconstruction(stack,output,opto,x1,y1,x2,y2,rchild_max,rchild_min):
                     iMin = rchild_min.value
                     # run the reconstruction function 
                     if opto == 1:
-                        result = np.zeros((512,512,2))
-                        data = torch.from_numpy(pixels)
-                        data = data.cuda()
-                        temp = data[x1:x1+511,y1:y1+511,:]
-                        temp = torch.swapaxes(temp,0,2)
-                        temp = temp.unsqueeze(0)
-                        temp = temp.type(torch.FloatTensor)
-                        temp = torch.clamp(temp,iMin,iMax)
-                        temp = temp - torch.amin(temp)
-                        temp = temp/torch.amax(temp)
-                        sr = net(temp.cuda())
-                        sr = torch.clamp(sr,0,1)
-                        srframe = sr.cpu()
-                        srframe = srframe.numpy()
-                        result[:,:,0] = np.squeeze(srframe)
-
-                        temp = data[x2:x2+511,y2:y2+511,:]
-                        temp = torch.swapaxes(temp,0,2)
-                        temp = temp.unsqueeze(0)
-                        temp = temp.type(torch.FloatTensor)
-                        temp = torch.clamp(temp,iMin,iMax)
-                        temp = temp - torch.amin(temp)
-                        temp = temp/torch.amax(temp)
-                        sr = net(temp.cuda())
-                        sr = torch.clamp(sr,0,1)
-                        srframe = sr.cpu()
-                        srframe = srframe.numpy()
-                        result[:,:,1] = np.squeeze(srframe)
+                        result = np.zeros((512,512,3))
+                        if R ==1:
+                            data = torch.from_numpy(pixels)
+                            data = data.cuda()
+                            temp = data[x1:x1+511,y1:y1+511,:]
+                            temp = torch.swapaxes(temp,0,2)
+                            temp = temp.unsqueeze(0)
+                            temp = temp.type(torch.FloatTensor)
+                            temp = torch.clamp(temp,iMin,iMax)
+                            temp = temp - torch.amin(temp)
+                            temp = temp/torch.amax(temp)
+                            sr = net(temp.cuda())
+                            sr = torch.clamp(sr,0,1)
+                            srframe = sr.cpu()
+                            srframe = srframe.numpy()
+                            result[:,:,0] = np.squeeze(srframe)
+                        if G ==1:
+                            temp = data[x2:x2+511,y2:y2+511,:]
+                            temp = torch.swapaxes(temp,0,2)
+                            temp = temp.unsqueeze(0)
+                            temp = temp.type(torch.FloatTensor)
+                            temp = torch.clamp(temp,iMin,iMax)
+                            temp = temp - torch.amin(temp)
+                            temp = temp/torch.amax(temp)
+                            sr = net(temp.cuda())
+                            sr = torch.clamp(sr,0,1)
+                            srframe = sr.cpu()
+                            srframe = srframe.numpy()
+                            result[:,:,1] = np.squeeze(srframe)
+                        if B ==1:
+                            temp = data[x3:x3+511,y3:y3+511,:]
+                            temp = torch.swapaxes(temp,0,2)
+                            temp = temp.unsqueeze(0)
+                            temp = temp.type(torch.FloatTensor)
+                            temp = torch.clamp(temp,iMin,iMax)
+                            temp = temp - torch.amin(temp)
+                            temp = temp/torch.amax(temp)
+                            sr = net(temp.cuda())
+                            sr = torch.clamp(sr,0,1)
+                            srframe = sr.cpu()
+                            srframe = srframe.numpy()
+                            result[:,:,2] = np.squeeze(srframe)
                                                                         
                         output.put(result)    
 
@@ -132,7 +146,7 @@ def ml_reconstruction(stack,output,opto,x1,y1,x2,y2,rchild_max,rchild_min):
     output.put(False)
 
 ## Live view
-def live_loop(stop_signal,output,exposure,opto,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min):
+def live_loop(stop_signal,output,exposure,opto,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min,R,G,B):
     print('starting acquisition')
 
     stop_signal.put(True)
@@ -179,9 +193,12 @@ def live_loop(stop_signal,output,exposure,opto,x1,y1,x2,y2,x3,y3,rchild_max,rchi
                         pixels = pixels.astype('float64')
                         if opto == 1:
                             merged = np.zeros((512,512,2))
-                            merged[:,:,0] = pixels[x1:x1+511,y1:y1+511]
-                            merged[:,:,1] = pixels[x2:x2+511,y2:y2+511]
-                            merged[:,:,2] = pixels[x3:x3+511,y3:y3+511]
+                            if R ==1:
+                                merged[:,:,0] = pixels[x1:x1+511,y1:y1+511]
+                            if G ==1:    
+                                merged[:,:,1] = pixels[x2:x2+511,y2:y2+511]
+                            if B ==1:
+                                merged[:,:,2] = pixels[x3:x3+511,y3:y3+511]
                             output.put(merged)
                         else:      
                             iMax = rchild_max.value 
@@ -255,9 +272,9 @@ def acquisition_loop(stop_signal,stack,exposure):
         stack.put(False)
 
 ## Start live View
-def live_view(stop_signal,output,exposure,opto,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min):
+def live_view(stop_signal,output,exposure,opto,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min,R,G,B):
     processes = [] # initialise processes 
-    proc_live = mp.Process(target=live_loop, args=(stop_signal,output,exposure,opto,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min))
+    proc_live = mp.Process(target=live_loop, args=(stop_signal,output,exposure,opto,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min,R,G,B))
     processes.append(proc_live)
 
     processes.reverse()
@@ -268,11 +285,11 @@ def live_view(stop_signal,output,exposure,opto,x1,y1,x2,y2,x3,y3,rchild_max,rchi
         process.join()
 
 ## Start live ML-SIM
-def live_ml_sim(stack,stop_signal,output,exposure,opto,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min):
+def live_ml_sim(stack,stop_signal,output,exposure,opto,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min,R,G,B):
     processes = [] # initialise processes 
     proc_live = mp.Process(target=acquisition_loop, args=(stop_signal,stack,exposure))
     processes.append(proc_live)
-    proc_recon = mp.Process(target=ml_reconstruction, args=(stack,output,opto,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min))
+    proc_recon = mp.Process(target=ml_reconstruction, args=(stack,output,opto,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min,R,G,B))
     processes.append(proc_recon)
     processes.reverse()
 

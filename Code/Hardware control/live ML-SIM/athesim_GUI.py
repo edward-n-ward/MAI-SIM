@@ -29,9 +29,26 @@ class ML_App:
         self.output = mp.Queue()
         self.stack = mp.Queue()
 
+        # Use optosplit
         self.opto = tk.IntVar()
         self.multi = tk.Checkbutton(self.tab2,variable=self.opto)
         self.multi.place(x=15, y=120)
+        # Acquire Red channel
+        self.R = tk.IntVar()
+        self.rChan = tk.Checkbutton(self.tab2,variable=self.R)
+        self.rChan.place(x=125, y=280)
+        # Acquire Green channel
+        self.G = tk.IntVar()
+        self.gChan = tk.Checkbutton(self.tab2,variable=self.G)
+        self.gChan.place(x=125, y=280)
+        # Acquire Blue channel
+        self.B = tk.IntVar()
+        self.bChan = tk.Checkbutton(self.tab2,variable=self.B)
+        self.bChan.place(x=125, y=280)
+
+
+
+
         self.multi_label = tk.Label(self.tab2, text = "Use optosplit")
         self.multi_label.place(x = 30,y = 122)
 
@@ -187,17 +204,22 @@ class ML_App:
         self.start_live_decon["state"] == DISABLED
         self.quit_button["state"] == DISABLED
         optosplit = self.opto.get()
+        R = self.R.get(); G = self.G.get(); B = self.B.get()
         if optosplit == 1:
             x1 = self.x1.get() # get ROI variables from the GUI input
             y1 = self.y1.get()
             x2 = self.x2.get() # get ROI variables from the GUI input
             y2 = self.y2.get()
+            x3 = self.x3.get() # get ROI variables from the GUI input
+            y3 = self.y3.get()
             with Bridge() as bridge: # load camera control library
-                xmin = min(x1,x2)
-                xmax = max(x1,x2)
+                xmin = min(x1,x2,x3)
+                xmax = max(x1,x2,x3)
+                x1 = x1-xmin; x2 = x2-xmin; x3 = x3-xmin
                 width = xmax-xmin+512
-                ymin = min(y1,y2)
-                ymax = max(y1,y2)
+                ymin = min(y1,y2,y3)
+                ymax = max(y1,y2,y3)
+                y1 = y1-ymin; y2 = y2-ymin; y3 = y3-ymin                
                 height = ymax-ymin+512
                 core = bridge.get_core()
                 ROI = [xmin, ymin, width, height] # build ROI 
@@ -209,6 +231,8 @@ class ML_App:
                 y1 = self.yOff.get()
                 x2 = 0
                 y2 = 0
+                x3 = 0
+                y3 = 0                
                 core = bridge.get_core()
                 ROI = [x1, y1, 512, 512] # build ROI 
                 core.set_roi(*ROI) # set ROI  
@@ -220,7 +244,9 @@ class ML_App:
         child_min = mp.Value('d',1)
         rchild_max = mp.Value('d',1000)
         rchild_min = mp.Value('d',1)
-        self.live_process = mp.Process(target= asf.live_view, args = (self.stop_signal,self.output,exposure_time,optosplit,x1,y1,x2,y2,rchild_max,rchild_min))
+        self.live_process = mp.Process(target= asf.live_view, args = (self.stop_signal,
+            self.output,exposure_time,optosplit,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min,R,G,B))
+
         self.live_process.start()
         self.plotting_process = threading.Thread(target= self.plot, args = (child_max,child_min,rchild_max,rchild_min))
         self.plotting_process.start()
@@ -229,17 +255,22 @@ class ML_App:
         self.live["state"] == DISABLED
         self.quit_button["state"] == DISABLED
         optosplit = self.opto.get()
+        R = self.R.get(); G = self.G.get(); B = self.B.get()
         if optosplit == 1:
             x1 = self.x1.get() # get ROI variables from the GUI input
             y1 = self.y1.get()
             x2 = self.x2.get() # get ROI variables from the GUI input
             y2 = self.y2.get()
+            x3 = self.x3.get() # get ROI variables from the GUI input
+            y3 = self.y3.get()
             with Bridge() as bridge: # load camera control library
-                xmin = min(x1,x2)
-                xmax = max(x1,x2)
+                xmin = min(x1,x2,x3)
+                xmax = max(x1,x2,x3)
+                x1 = x1-xmin; x2 = x2-xmin; x3 = x3-xmin
                 width = xmax-xmin+512
-                ymin = min(y1,y2)
-                ymax = max(y1,y2)
+                ymin = min(y1,y2,y3)
+                ymax = max(y1,y2,y3)
+                y1 = y1-ymin; y2 = y2-ymin; y3 = y3-ymin 
                 height = ymax-ymin+512
                 core = bridge.get_core()
                 ROI = [xmin, ymin, width, height] # build ROI 
@@ -251,6 +282,8 @@ class ML_App:
                 y1 = self.yOff.get()
                 x2 = 0
                 y2 = 0
+                x3 = 0
+                y3 = 0
                 core = bridge.get_core()
                 ROI = [x1, y1, 512, 512] # build ROI 
                 core.set_roi(*ROI) # set ROI  
@@ -262,7 +295,8 @@ class ML_App:
         rchild_max = mp.Value('d',1000)
         rchild_min = mp.Value('d',1)
 
-        self.live_process = mp.Process(target= asf.live_ml_sim, args = (self.stack,self.stop_signal,self.output,exposure_time,optosplit,x1,y1,x2,y2,rchild_max,rchild_min))
+        self.live_process = mp.Process(target= asf.live_ml_sim, args = (self.stack,self.stop_signal,self.output,
+            exposure_time,optosplit,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min,R,G,B))
         self.live_process.start()
 
         self.plotting_process = threading.Thread(target= self.plot, args = (child_max,child_min,rchild_max,rchild_min))
