@@ -36,15 +36,15 @@ class ML_App:
         # Acquire Red channel
         self.R = tk.IntVar()
         self.rChan = tk.Checkbutton(self.tab2,variable=self.R)
-        self.rChan.place(x=125, y=280)
+        self.rChan.place(x=118, y=278)
         # Acquire Green channel
         self.G = tk.IntVar()
         self.gChan = tk.Checkbutton(self.tab2,variable=self.G)
-        self.gChan.place(x=125, y=280)
+        self.gChan.place(x=118, y=301)
         # Acquire Blue channel
         self.B = tk.IntVar()
         self.bChan = tk.Checkbutton(self.tab2,variable=self.B)
-        self.bChan.place(x=125, y=280)
+        self.bChan.place(x=118, y=324)
 
 
 
