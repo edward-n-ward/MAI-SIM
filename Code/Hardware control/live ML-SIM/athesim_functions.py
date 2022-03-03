@@ -1,8 +1,8 @@
-#import nidaqmx # microscope control
+import nidaqmx # microscope control
 import numpy as np
 import time
 import torch.multiprocessing as mp
-#from pycromanager import Bridge
+from pycromanager import Bridge
 import torch
 from models import *
 import argparse
@@ -79,11 +79,11 @@ def ml_reconstruction(stack,output,opto,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min,
                     iMin = rchild_min.value
                     # run the reconstruction function 
                     if opto == 1:
-                        result = np.zeros((512,512,3))
+                        result = np.zeros([512,512,3])
                         if R ==1:
                             data = torch.from_numpy(pixels)
                             data = data.cuda()
-                            temp = data[x1:x1+511,y1:y1+511,:]
+                            temp = data[y1:y1+512,x1:x1+512,:]
                             temp = torch.swapaxes(temp,0,2)
                             temp = temp.unsqueeze(0)
                             temp = temp.type(torch.FloatTensor)
@@ -96,7 +96,7 @@ def ml_reconstruction(stack,output,opto,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min,
                             srframe = srframe.numpy()
                             result[:,:,0] = np.squeeze(srframe)
                         if G ==1:
-                            temp = data[x2:x2+511,y2:y2+511,:]
+                            temp = data[y2:y2+512,x2:x2+512,:]
                             temp = torch.swapaxes(temp,0,2)
                             temp = temp.unsqueeze(0)
                             temp = temp.type(torch.FloatTensor)
@@ -109,7 +109,7 @@ def ml_reconstruction(stack,output,opto,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min,
                             srframe = srframe.numpy()
                             result[:,:,1] = np.squeeze(srframe)
                         if B ==1:
-                            temp = data[x3:x3+511,y3:y3+511,:]
+                            temp = data[y3:y3+512,x3:x3+512,:]
                             temp = torch.swapaxes(temp,0,2)
                             temp = temp.unsqueeze(0)
                             temp = temp.type(torch.FloatTensor)
@@ -153,8 +153,8 @@ def live_loop(stop_signal,output,exposure,opto,x1,y1,x2,y2,x3,y3,rchild_max,rchi
     with nidaqmx.Task() as VoltageTask, nidaqmx.Task() as CameraTask, Bridge() as bridge: # sorts out camera and microscope control
         voltages = np.array([0.95, 0.9508, 0.9516, 2.25, 2.2025, 2.205, 3.45, 3.454, 3.4548]) # microscope control values
         waits = np.array([0.08,0.008,0.008,0.06,0.008,0.008,0.06,0.008,0.008])
-        VoltageTask.ao_channels.add_ao_voltage_chan("Galvo_control/ao1")
-        CameraTask.do_channels.add_do_chan("Galvo_control/port1/line3")
+        VoltageTask.ao_channels.add_ao_voltage_chan("Dev1/ao0")
+        CameraTask.do_channels.add_do_chan("Dev1/port0/line2")
         core = bridge.get_core()
 
         if core.is_sequence_running():
@@ -192,13 +192,21 @@ def live_loop(stop_signal,output,exposure,opto,x1,y1,x2,y2,x3,y3,rchild_max,rchi
                         pixels = np.squeeze(np.reshape(result.pix,newshape=[-1, result.tags["Height"], result.tags["Width"]],)) # reshape image data
                         pixels = pixels.astype('float64')
                         if opto == 1:
-                            merged = np.zeros((512,512,2))
+                            merged = np.zeros([512,512,3])
                             if R ==1:
-                                merged[:,:,0] = pixels[x1:x1+511,y1:y1+511]
+                                q = pixels[y1:y1+512,x1:x1+512]
+                                q = q/np.amax(q)
+                                merged[:,:,0] = q
+                                
                             if G ==1:    
-                                merged[:,:,1] = pixels[x2:x2+511,y2:y2+511]
+                                q = pixels[y2:y2+512,x2:x2+512]
+                                q = q/np.amax(q)
+                                merged[:,:,1] = q
+
                             if B ==1:
-                                merged[:,:,2] = pixels[x3:x3+511,y3:y3+511]
+                                q = pixels[y3:y3+512,x3:x3+512]
+                                q = q/np.amax(q)
+                                merged[:,:,2] = q
                             output.put(merged)
                         else:      
                             iMax = rchild_max.value 
@@ -220,8 +228,8 @@ def acquisition_loop(stop_signal,stack,exposure):
     with nidaqmx.Task() as VoltageTask, nidaqmx.Task() as CameraTask, Bridge() as bridge: # sorts out camera and microscope control
         voltages = np.array([0.95, 0.9508, 0.9516, 2.25, 2.2025, 2.205, 3.45, 3.454, 3.4548]) # microscope control values
         waits = np.array([0.08,0.008,0.008,0.06,0.008,0.008,0.06,0.008,0.008])
-        VoltageTask.ao_channels.add_ao_voltage_chan("Galvo_control/ao1")
-        CameraTask.do_channels.add_do_chan("Galvo_control/port1/line3")
+        VoltageTask.ao_channels.add_ao_voltage_chan("Dev1/ao0")
+        CameraTask.do_channels.add_do_chan("Dev1/port0/line2")
         core = bridge.get_core()
 
         if core.is_sequence_running():

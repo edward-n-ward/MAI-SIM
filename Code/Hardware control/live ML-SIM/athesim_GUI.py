@@ -53,21 +53,21 @@ class ML_App:
         self.multi_label.place(x = 30,y = 122)
 
         self.y1 = tk.IntVar()
-        self.y1.set(30)
+        self.y1.set(700)
         self.yco1 = tk.Entry(self.tab2,text='Y1',textvariable=self.y1) # Y1 field
         self.yco1.place(x=75, y=280, width=25)
         self.y1_label = tk.Label(self.tab2, text = "y1")
         self.y1_label.place(x = 100,y = 280)
 
         self.x1 = tk.IntVar()
-        self.x1.set(30)
+        self.x1.set(22)
         self.xco1 = tk.Entry(self.tab2,textvariable=self.x1) # X1 field
         self.xco1.place(x=15, y=280, width=25)
         self.x1_label = tk.Label(self.tab2, text = "x1")
         self.x1_label.place(x = 40,y = 280)        
 
         self.y2 = tk.IntVar()
-        self.y2.set(35)
+        self.y2.set(700)
         self.yco2 = tk.Entry(self.tab2,textvariable=self.y2) # Y2 field
         self.yco2.place(x=75, y=303, width=25)
         self.y2_label = tk.Label(self.tab2, text = "y2")
@@ -81,14 +81,14 @@ class ML_App:
         self.x2_label.place(x = 40,y=303)  
 
         self.y3 = tk.IntVar()
-        self.y3.set(695)
+        self.y3.set(700)
         self.yco3 = tk.Entry(self.tab2,textvariable=self.y3) # Y3 field
         self.yco3.place(x=75, y=326, width=25)
         self.y3_label = tk.Label(self.tab2, text = "y3")
         self.y3_label.place(x = 100,y=326)  
 
         self.x3 = tk.IntVar()
-        self.x3 .set(695)
+        self.x3 .set(1385)
         self.xco3 = tk.Entry(self.tab2,textvariable=self.x3) # X3 field
         self.xco3.place(x=15, y=326, width=25)
         self.x3_label = tk.Label(self.tab2, text = "x3 ")
@@ -213,15 +213,17 @@ class ML_App:
             x3 = self.x3.get() # get ROI variables from the GUI input
             y3 = self.y3.get()
             with Bridge() as bridge: # load camera control library
+                core = bridge.get_core()
+                if core.is_sequence_running():
+                    core.stop_sequence_acquisition() # stop the camera
                 xmin = min(x1,x2,x3)
                 xmax = max(x1,x2,x3)
                 x1 = x1-xmin; x2 = x2-xmin; x3 = x3-xmin
-                width = xmax-xmin+512
+                width = xmax-xmin+513
                 ymin = min(y1,y2,y3)
                 ymax = max(y1,y2,y3)
-                y1 = y1-ymin; y2 = y2-ymin; y3 = y3-ymin                
-                height = ymax-ymin+512
-                core = bridge.get_core()
+                y1 = y1-ymin; y2 = y2-ymin; y3 = y3-ymin               
+                height = ymax-ymin+513
                 ROI = [xmin, ymin, width, height] # build ROI 
                 core.set_roi(*ROI) # set ROI  
                 print('Successfully set ROI for optosplit')
@@ -264,15 +266,17 @@ class ML_App:
             x3 = self.x3.get() # get ROI variables from the GUI input
             y3 = self.y3.get()
             with Bridge() as bridge: # load camera control library
+                core = bridge.get_core()
+                if core.is_sequence_running():
+                    core.stop_sequence_acquisition() # stop the camera
                 xmin = min(x1,x2,x3)
                 xmax = max(x1,x2,x3)
                 x1 = x1-xmin; x2 = x2-xmin; x3 = x3-xmin
-                width = xmax-xmin+512
+                width = xmax-xmin+513
                 ymin = min(y1,y2,y3)
                 ymax = max(y1,y2,y3)
-                y1 = y1-ymin; y2 = y2-ymin; y3 = y3-ymin 
-                height = ymax-ymin+512
-                core = bridge.get_core()
+                y1 = y1-ymin; y2 = y2-ymin; y3 = y3-ymin
+                height = ymax-ymin+513
                 ROI = [xmin, ymin, width, height] # build ROI 
                 core.set_roi(*ROI) # set ROI  
                 print('Successfully set ROI for optosplit')
