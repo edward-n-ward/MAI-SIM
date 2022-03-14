@@ -1,8 +1,4 @@
-% Simple program to estimate maximum modulation depth as a
-% function of polarisation angle.
-% Code adapted from:
-%    Kevin O Holleran and Michael Shaw, "Polarization effects on contrast...
-%    in structured illumination microscopy," Opt. Lett. 37, 4603-4605 (2012)
+% Simple graphign function to estimate maximum modulation depth 
 
 
 
