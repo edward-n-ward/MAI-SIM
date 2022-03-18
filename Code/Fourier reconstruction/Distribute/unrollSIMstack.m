@@ -1,5 +1,5 @@
 
-[files, path] = uigetfile('D:\SIM Data\25-02-2022\to process\*.tif','multiselect','on');
+[files, path] = uigetfile('D:\SIM Data\17-03-2022\to process\*.tif','multiselect','on');
 for imFile = 1:length(files) 
 
 inFile = fullfile(path,files{imFile});
@@ -24,10 +24,11 @@ fTIF = Fast_Tiff_Write(outFile,0.125,0);
 imNum = i-pnum;
 try
 for f = 2:frames
+    textwaitbar(f, frames, msg);
+
 for a = 1:anum
 for p = 1:pnum
-
-    textwaitbar(f, frames, msg);
+    
     imNum=imNum+1;
     load = imread(inFile,imNum);
     fTIF.WriteIMG(load');

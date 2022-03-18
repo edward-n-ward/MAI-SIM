@@ -8,7 +8,7 @@
 
 clear all; close all;
 NA = 1.2;
-n = 1.3;
+n = 1.34;
 res = 1.66;
 
 theta_max = asin(NA/n);

@@ -1,15 +1,18 @@
 a_num =3;
 p_num = 3;
-[files, path] = uigetfile('D:\SIM Data\25-02-2022\to process\*.tif','multiselect','on');
+[files, path] = uigetfile('D:\SIM Data\17-03-2022\to process\*.tif','multiselect','on');
 for imFile = 1:length(files) 
    disp('Starting Stack')
    
 try
     
 inFile = fullfile(path,files{imFile});
+r_top = 140; r_left = 1464;
+g_top = 140; g_left = 784;
+b_top = 140; b_left = 106;
 
-x_width = 512;
-y_width = 512;
+x_width = 511;
+y_width = 511;
 
 outFileR = strcat(inFile(1:(end-28)),'_Split.tif');
 r = 1;
@@ -31,9 +34,9 @@ for i = 1:n
         for a = 0:(a_num-1)
         for p = 0:(p_num-1)
             loaded = imread(inFile,ind+((a*a_num)+p))';
-            green = loaded(678:678+x_width,109:109+y_width);
+            green = loaded(g_left:g_left+x_width,g_top:g_top+y_width);
 %             if b ==1
-%             blue = loaded(21:21+x_width,8:8+y_width);
+%             blue = loaded(b_left:b_left+x_width,b_top:b_top+y_width);
 %             green = green-0.02*blue;
 %             green(green<0)=0;
 %             else
@@ -50,15 +53,15 @@ for i = 1:n
         for a = 0:(a_num-1)
         for p = 0:(p_num-1)
             loaded = imread(inFile,ind+((a*a_num)+p))';
-            red = loaded(4:4+x_width,110:110+y_width);
+            red = loaded(r_left:r_left+x_width,r_top:r_top+y_width);
             
-            if g ==1
-            green = loaded(678:678+x_width,109:109+y_width);
-            red = red-0.02*green;
-            red(red<0)=0;
-            else
+%             if g ==1
+%             green = loaded(g_left:g_left+x_width,g_top:g_top+y_width);
+%             red = red-0.02*green;
+%             red(red<0)=0;
+%             else
                 red = red-min(red(:));
-            end
+%             end
             
             red = edgetaper(red,PSF_edge);
             fTIF.WriteIMG(red);
@@ -70,7 +73,7 @@ for i = 1:n
         for a = 0:(a_num-1)
         for p = 0:(p_num-1)
             loaded = imread(inFile,ind+((a*a_num)+p))';
-            blue = loaded(1350:1350+x_width,110:110+y_width);
+            blue = loaded(1404:1404+x_width,94:94+y_width);
             blue = blue-min(blue(:));
                         
             blue = edgetaper(blue,PSF_edge);
