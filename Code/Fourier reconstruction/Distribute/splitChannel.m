@@ -1,6 +1,6 @@
 a_num =3;
 p_num = 3;
-[files, path] = uigetfile('D:\SIM Data\17-03-2022\to process\*.tif','multiselect','on');
+[files, path] = uigetfile('D:\SIM Data\10-02-2022\to process\mito\unrolled\*.tif','multiselect','on');
 for imFile = 1:length(files) 
    disp('Starting Stack')
    
