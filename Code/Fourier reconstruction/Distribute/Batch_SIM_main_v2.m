@@ -26,6 +26,8 @@ for f = 1:frames
     for ii=1:a_num
         for jj=1:p_num
             load = double(imread(filepath,((ii-1)*3+jj+9*(f-1))));
+            load = load-min(load(:));
+            load = load./max(load(:));
             noiseimage(1:X,1:Y,ii,jj)=load;
         end
     end
@@ -46,7 +48,7 @@ filename='1_X';% the names should be 1_X1, 1_X2, ..., 1_X(a_num*p_num) in this c
 fileformat='tif';
 
 %% parameter of the detection system
-lambda=590;% fluorescence emission wavelength (emission maximum). unit: nm
+lambda=520;% fluorescence emission wavelength (emission maximum). unit: nm
 psize=85; 
 % psize=pixel size/magnification power. unit: nm
 NA=1.2;
@@ -54,7 +56,7 @@ NA=1.2;
 %% parameter for reconstruction
 wiener_factor=0.05;
 
-mask_factor=0.5;%a high-pass mask (fmask) is utilized to estimate the modulation vector;
+mask_factor=0.4;%a high-pass mask (fmask) is utilized to estimate the modulation vector;
 % the cutoff frequency of fmask is mask_factor*(cutoff frequency of the detection OTF)
 % recommended value: 0.6 for conventional SIM, 0.8 for TIRF-SIM
 
@@ -99,6 +101,7 @@ apsfde=fftshift(ifft2(ifftshift(ctfde)));
 ipsfde=ifftscalede*abs(apsfde).^2;
 OTFde=real(fftshift(fft2(ifftshift(ipsfde))));
 clear apsfde ctfde temp X Y
+
 %% filter/deconvolution before using noiseimage
 widefield=sum(sum(noiseimage,4),3);
 widefield=quasi_wnr(OTFde,widefield,wiener_factor^2);
@@ -106,7 +109,7 @@ widefield=widefield.*(widefield>0);
 
 for ii=1:a_num
     for jj=1:p_num
-        noiseimage(:,:,ii,jj)=quasi_wnr(OTFde,squeeze(noiseimage(:,:,ii,jj)),wiener_factor^2);
+        %noiseimage(:,:,ii,jj)=quasi_wnr(OTFde,squeeze(noiseimage(:,:,ii,jj)),wiener_factor^2);
 
         %noiseimage(:,:,ii,jj)=deconvlucy(noiseimage(:,:,ii,jj),ipsfde,3);
         %pre-deconvolution. It can be applied to suppress noises in experiments
@@ -154,7 +157,7 @@ for ii=1:a_num
 end
 
 %% phase correction with inverse matrix based algorithm
-search_range=0.6;%the max radius in the local search algorithm
+search_range=0.4;%the max radius in the local search algorithm
 
 %obtain a more precise estimation of the period and the directon of sinusodial pattern
 [ precise_shift,~] = precise_frequency_tirf(noiseimagef,shiftvalue,search_range);
@@ -331,17 +334,17 @@ FT_extended_per_angle=sum(ft_true,4);
 FT_extended=sum(FT_extended_per_angle,3);
 reconstructed_im=ifft2(ifftshift(FT_extended));
 reconstructed_im=real(reconstructed_im).*(real(reconstructed_im>0));
-reconstructed_im=deconvlucy(reconstructed_im,psf_n,4);
+%reconstructed_im=deconvlucy(reconstructed_im,psf_n,4);
 %figure;imagesc(reconstructed_im);colormap(hot);title('SIM');
 
-widefield=deconvlucy(widefield,ipsfde,3);
+%widefield=deconvlucy(widefield,ipsfde,3);
 %figure;imagesc(widefield);colormap(hot);title('wide-field');
 
 if save_flag==1
-    mytemp=uint8(reconstructed_im./max(reconstructed_im(:))*255);
+    mytemp=uint16(reconstructed_im./max(reconstructed_im(:))*65000);
     imwrite(mytemp,hot(256),[filepath(1:end-4),'SIM.',fileformat],fileformat,'writemode','append');
 
-    mytemp=uint8(widefield./max(widefield(:))*255);
+    mytemp=uint16(widefield./max(widefield(:))*65000);
     imwrite(mytemp,hot(256),[filepath(1:end-4),'Widefield.',fileformat],fileformat,'writemode','append');
 end
 output = mean(modulation_depth);

@@ -7,7 +7,7 @@ clear all
 a_num=3;% number of pattern orientations
 p_num=3;% phase shift times for each pattern orientation
 
-[file, path] = uigetfile('F:\SIM_Data\*.tif');
+[file, path] = uigetfile('C:\Users\ew535\OneDrive - University of Cambridge\images\*.tif');
 filepath=fullfile(path,file);%replace with your file's path
 filename='1_X';% the names should be 1_X1, 1_X2, ..., 1_X(a_num*p_num) in this case;
 fileformat='tif';
@@ -81,7 +81,7 @@ widefield=widefield.*(widefield>0);
 
 for ii=1:a_num
     for jj=1:p_num
-        noiseimage(:,:,ii,jj)=quasi_wnr(OTFde,squeeze(noiseimage(:,:,ii,jj)),wiener_factor^2);
+        %noiseimage(:,:,ii,jj)=quasi_wnr(OTFde,squeeze(noiseimage(:,:,ii,jj)),wiener_factor^2);
 
         %noiseimage(:,:,ii,jj)=deconvlucy(noiseimage(:,:,ii,jj),ipsfde,3);
         %pre-deconvolution. It can be applied to suppress noises in experiments

@@ -26,8 +26,8 @@ def GetParams():
   # data
   opt.weights = 'DIV2K_randomised_3x3_20200317.pth' 
   opt.imageSize = 255
-  opt.root = 'D:/SIM Data/10-02-2022/to process/lyso/unrolled/to process'
-  opt.out = 'D:/SIM Data/10-02-2022/to process/lyso/unrolled/to process'
+  opt.root = 'C:/Users/ew535/OneDrive - University of Cambridge/images/starfish/good phase/to process'
+  opt.out = 'C:/Users/ew535/OneDrive - University of Cambridge/images/starfish/good phase/ML-SIM'
 
   # input/output layer options
   opt.norm = 'minmax' # if normalization should not be used
@@ -52,7 +52,19 @@ def GetParams():
     
   return opt
 
+def threshold_and_norm(arr):
 
+    arr = arr-np.amin(arr)
+    arr = (arr/np.amax(arr))
+    #hist, bins = np.histogram(arr,255)
+    #ind = np.where(hist==np.amax(hist))
+    #mini = bins[ind[0][0]]
+    #maxi = bins[ind[0][0]+1]
+    #sub = 0.8*((maxi+mini)/2)
+    #arr = arr - sub
+    #arr[arr<0]=0
+    #arr = (arr/np.amax(arr))
+    return arr
 
 def remove_dataparallel_wrapper(state_dict):
 	r"""Converts a DataParallel model to a normal one by removing the "module."
@@ -123,8 +135,9 @@ def EvaluateModel(opt):
             stackSubset = stackSubset-np.amin(stackSubset)
             stackSubset = stackSubset/np.amax(stackSubset)
             for f in range(0,opt.nch_in*opt.mean):
-                stackSubset[f,:,:] = stackSubset[f,:,:] - np.amin(stackSubset[f,:,:])
-                stackSubset[f,:,:] = stackSubset[f,:,:]/np.amax(stackSubset[f,:,:])
+                stackSubset[f,:,:] = threshold_and_norm(stackSubset[f,:,:])
+                #stackSubset[f,:,:] = stackSubset[f,:,:] - np.amin(stackSubset[f,:,:])
+                #stackSubset[f,:,:] = stackSubset[f,:,:]/np.amax(stackSubset[f,:,:])
             wf = np.mean(stackSubset,0)
             rolling = np.zeros(wf.shape)
             for slice in range(opt.mean):
@@ -164,7 +177,8 @@ def EvaluateModel(opt):
 
                     sr = torch.clamp(sr[0],0,1)
                     sr_frame = sr.numpy()
-                    sr_frame = np.squeeze(sr_frame)                               
+                    sr_frame = np.squeeze(sr_frame)      
+                    #sr_frame = threshold_and_norm(sr_frame)                         
                 # rolling += sr_frame
                 if stack_idx == 0:
                     reference = np.copy(sr_frame)
