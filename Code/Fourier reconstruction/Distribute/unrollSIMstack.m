@@ -1,5 +1,5 @@
 
-[files, path] = uigetfile('D:\SIM Data\17-03-2022\to process\*.tif','multiselect','on');
+[files, path] = uigetfile('D:\SIM_Data\03_05_2022\to process\*.tif','multiselect','on');
 for imFile = 1:length(files) 
 
 inFile = fullfile(path,files{imFile});

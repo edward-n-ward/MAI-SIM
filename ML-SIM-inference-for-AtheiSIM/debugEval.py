@@ -26,8 +26,13 @@ def GetParams():
   # data
   opt.weights = 'DIV2K_randomised_3x3_20200317.pth' 
   opt.imageSize = 255
+<<<<<<< Updated upstream
   opt.root = 'C:/Users/ew535/OneDrive - University of Cambridge/images/starfish/good phase/to process'
   opt.out = 'C:/Users/ew535/OneDrive - University of Cambridge/images/starfish/good phase/ML-SIM'
+=======
+  opt.root = 'D:/SIM_Data/03_05_2022/to process/unrolled/split'
+  opt.out = 'D:/SIM_Data/03_05_2022/to process/unrolled/split/ML-SIM'
+>>>>>>> Stashed changes
 
   # input/output layer options
   opt.norm = 'minmax' # if normalization should not be used
