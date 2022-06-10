@@ -6,12 +6,12 @@ clear all
 %% read image file
 a_num=3;% number of pattern orientations
 p_num=3;% phase shift times for each pattern orientation
-filepath = 'D:\SIM Data\04-03-2022\tubGreen_2\fixed good phases.tif';
+filepath = 'D:\ML-SIM\datasets\TIRF SIM\1.tif';
 
 %% parameter of the detection system
 lambda=590;% fluorescence emission wavelength (emission maximum). unit: nm
-psize=85; 
-NA=1.2;
+psize=55; 
+NA=1.49;
 
 %% parameter for reconstruction
 iter = 5;
@@ -133,7 +133,7 @@ end
 % my_phase_auto=mod(-auto_phase,2*pi);
 % my_phase_cc=mod(cc_phase,2*pi);
 
-inv_phase=auto_phase;
+% inv_phase=auto_phase;
 patterns = zeros(size(noiseimagef));
 xn=xr+xsize/2; xn = 2*pi*xn./max(xn(:));
 yn=yr+ysize/2; yn = 2*pi*yn./max(yn(:));
@@ -141,6 +141,6 @@ for a = 1:a_num
     for p =1:p_num
         phase = inv_phase(((a-1)*a_num)+p);
         patterns(:,:,a,p)=sin(xn*precise_shift(a,2,1)+yn*precise_shift(a,2,2)+phase);
-        imwrite(uint16(65000*patterns(:,:,a,p)),'patterns.tif','writemode','append');
+        imwrite(uint16(65000*patterns(:,:,a,p)),'C:\Users\ew535\Desktop\Reconstruction comparison\patterns.tif','writemode','append');
     end
 end

@@ -26,13 +26,8 @@ def GetParams():
   # data
   opt.weights = 'DIV2K_randomised_3x3_20200317.pth' 
   opt.imageSize = 255
-<<<<<<< Updated upstream
-  opt.root = 'C:/Users/ew535/OneDrive - University of Cambridge/images/starfish/good phase/to process'
-  opt.out = 'C:/Users/ew535/OneDrive - University of Cambridge/images/starfish/good phase/ML-SIM'
-=======
-  opt.root = 'D:/SIM_Data/03_05_2022/to process/unrolled/split'
-  opt.out = 'D:/SIM_Data/03_05_2022/to process/unrolled/split/ML-SIM'
->>>>>>> Stashed changes
+  opt.root = 'Folder containing images'
+  opt.out = 'Output folder'
 
   # input/output layer options
   opt.norm = 'minmax' # if normalization should not be used
@@ -57,6 +52,7 @@ def GetParams():
     
   return opt
 
+# Experimental method for input image normalisation
 def threshold_and_norm(arr):
 
     arr = arr-np.amin(arr)
@@ -141,8 +137,7 @@ def EvaluateModel(opt):
             stackSubset = stackSubset/np.amax(stackSubset)
             for f in range(0,opt.nch_in*opt.mean):
                 stackSubset[f,:,:] = threshold_and_norm(stackSubset[f,:,:])
-                #stackSubset[f,:,:] = stackSubset[f,:,:] - np.amin(stackSubset[f,:,:])
-                #stackSubset[f,:,:] = stackSubset[f,:,:]/np.amax(stackSubset[f,:,:])
+
             wf = np.mean(stackSubset,0)
             rolling = np.zeros(wf.shape)
             for slice in range(opt.mean):
@@ -159,23 +154,9 @@ def EvaluateModel(opt):
                     else:
                         sub_tensor = sub_tensor.type(torch.FloatTensor)
                         sub_tensor = sub_tensor.cuda()
+                        sub_tensor = sub_tensor.unsqueeze(0)                 
                         
-                        #sub_tensor = torch.fft.fft2(sub_tensor)
-                        #sub_tensor = torch.fft.fftshift(sub_tensor)
-                        #sub_tensor = F.pad(sub_tensor,(x_pad, x_pad, y_pad, y_pad))
-                        #sub_tensor = torch.fft.ifft2(torch.fft.ifftshift(sub_tensor))
-                        #sub_tensor = sub_tensor.real
-                        sub_tensor = sub_tensor.unsqueeze(0)
-                        
-                        
-                        sr = net(sub_tensor)
-
-#                       sr = sr.squeeze(0)
-#                       sr = torch.fft.fft2(sr)
-#                       sr = torch.fft.fftshift(sr)
-#                       sr = F.pad(sr,(x_pad, x_pad, y_pad, y_pad))
-#                       sr = torch.fft.ifft2(torch.fft.ifftshift(sr))
-#                       sr = sr.real                        
+                        sr = net(sub_tensor)               
                         sr = sr.cpu()
 
 
@@ -183,8 +164,7 @@ def EvaluateModel(opt):
                     sr = torch.clamp(sr[0],0,1)
                     sr_frame = sr.numpy()
                     sr_frame = np.squeeze(sr_frame)      
-                    #sr_frame = threshold_and_norm(sr_frame)                         
-                # rolling += sr_frame
+
                 if stack_idx == 0:
                     reference = np.copy(sr_frame)
                 else: 
