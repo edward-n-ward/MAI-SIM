@@ -5,7 +5,7 @@ from tkinter import ttk
 import threading
 import torch.multiprocessing as mp
 import numpy as np
-import athesim_functions as asf
+import MAI_SIM_functions as asf
 import time
 from pycromanager import Bridge # camera control
 import torch
