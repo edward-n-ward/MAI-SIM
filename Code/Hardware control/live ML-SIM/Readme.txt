@@ -31,6 +31,9 @@ This GUI has ben designed to operate on a SIM system where pattern orintation an
 by a single analogue output on a DAQ card. However, this could be changed relatively easiy by altering
 only the "acquisition_loop" function. 
 
+MAI_SIM_GUI_widefield and MAI_SIM_function_widefield are development functions not used for the live
+reconstructions.
+
 *********************************************************
 
 [1] Christensen CN, Ward EN, Lu M, Lio P, Kaminski CF. "ML-SIM: universal reconstruction of structured 
