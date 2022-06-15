@@ -7,7 +7,7 @@ and nidaqmx 0.6.1, all of which can be installed through anaconda and pip.
 
 
 The main funtion is MAI-SIM_GUI.py which will launch the GUI. There is a library of functions
-in MAI-SIM_functions.py which handles the core functionality. Also included are the .pth pytorch
+in MAI_SIM_functions.py which handles the core functionality. Also included are the .pth pytorch
 files that define the ML netowrk used. For a comparison of these see [1,2]
 
 The program makes use of the 
