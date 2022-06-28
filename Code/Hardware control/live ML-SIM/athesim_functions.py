@@ -6,6 +6,16 @@ from pycromanager import Bridge
 import torch
 from models import *
 import argparse
+import serial
+from tkinter.messagebox import showinfo
+
+l405_serialport = 'COM8'
+l647_serialport = 'COM5'
+l488_serialport = 'COM7'
+l405_baudrate = 19200
+l647_baudrate = 115200
+l488_baudrate = 115200
+
 
 mp.freeze_support() 
 
@@ -144,6 +154,324 @@ def ml_reconstruction(stack,output,opto,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min,
                         output.put(sr_frame)
     
     output.put(False)
+
+## 561 Control 
+def laser_control(laservariable):
+    print('Inside 567 Laser')
+
+    with nidaqmx.Task() as LaserOperationTask, nidaqmx.Task() as LaserStatusTask:
+      LaserOperationTask.do_channels.add_do_chan("Dev1/port0/line0")
+      print('Laser 567 port added')
+      if laservariable:
+        print('Turning On 561 Laser')
+        LaserOperationTask.write(True)
+      else:
+        print('Turning Off 561 Laser')
+        LaserOperationTask.write(False)
+
+## 488 Control
+def laser2_control(laservariable):
+    print('Inside 488 Laser')
+
+    with nidaqmx.Task() as LaserOperationTask, nidaqmx.Task() as LaserStatusTask:
+      LaserOperationTask.do_channels.add_do_chan("Dev1/port0/line1")
+      print('Laser 488 port added')
+      if laservariable:
+        print('Turning On 488 Laser')
+        LaserOperationTask.write(True)
+      else:
+        print('Turning Off 488 Laser')
+        LaserOperationTask.write(False)
+
+#488 Power Control
+def laser2_power_control(laservariable, laserpower):
+
+    laser488Ser = serial.Serial(l488_serialport,l488_baudrate)
+    laser488Ser.bytesize = serial.EIGHTBITS # bits per byte
+    laser488Ser.parity = serial.PARITY_NONE
+    laser488Ser.stopbits = serial.STOPBITS_ONE
+    laser488Ser.timeout = 5
+    laser488Ser.xonxoff = False #disable software flow conrol
+    laser488Ser.rtscts = False #disable hardware (RTS/CTS) flow control
+    laser488Ser.dsrdtr =  False #disable hardware (DSR/DTR) flow control
+    laser488Ser.writeTimeout = 0 #timeout for write
+    laserCalcPower = float(int(laserpower)/200)
+
+    print('Starting RS-232 Communication Setup for power')
+
+
+    if laservariable:
+        try:
+            laser488Ser.open()
+        except Exception as e:
+            print('Exception: Opening serial port: '+ str(e))
+    
+        if laser488Ser.isOpen():
+            laserCommand = 'p ' + str(laserCalcPower) +'\r'
+            laser488Ser.write(str.encode(laserCommand)) 
+
+            print("488 Power" + laserCommand)
+            try:
+                laserResponse = laser488Ser.readline().decode('ascii')
+                print("response data: " +laserResponse)
+                laser488Ser.flush()
+            except Exception as e:
+                print('Exception: Writing to serial port: '+ str(e))
+            print('488 Power Set')
+        else:
+            print('Connection failure')
+    else:
+        try:
+            laser488Ser.open()
+        except Exception as e:
+            print('Exception: Opening serial port: '+ str(e))
+
+        if laser488Ser.isOpen():
+            try:
+                laserResponse = laser488Ser.readline().decode('ascii')
+                print("response data: " +laserResponse)
+
+                showinfo( 
+                title='Warning', message=f'Laser 488 is Off - Turn On Laser to change power!'
+                )
+                laser488Ser.flush()
+            except Exception as e:
+                print('Exception: Writing to serial port: '+ str(e))
+            print('488 Laser Off')
+        else:
+            print('Connection failure')
+
+## 405 RS-232 Control
+def laser3_control(laservariable):
+    print('Inside 405 Laser')
+
+    laserSer = serial.Serial(l405_serialport,l405_baudrate)
+    laserSer.bytesize = serial.EIGHTBITS # bits per byte
+    laserSer.parity = serial.PARITY_NONE
+    laserSer.stopbits = serial.STOPBITS_ONE
+    laserSer.timeout = 5
+    laserSer.xonxoff = False #disable software flow conrol
+    laserSer.rtscts = False #disable hardware (RTS/CTS) flow control
+    laserSer.dsrdtr =  False #disable hardware (DSR/DTR) flow control
+    laserSer.writeTimeout = 0 #timeout for write
+
+    print('Starting RS-232 Communication Setup')
+
+
+    if laservariable:
+        try:
+            laserSer.open()
+        except Exception as e:
+            print('Exception: Opening serial port: '+ str(e))
+    
+        if laserSer.isOpen():
+            #laserSer.flushInput()
+            #laserSer.flushOutput()
+
+            laserSer.write(str.encode('L 1\r\n'))  
+            print("405 On command written")
+            
+            try:
+                laserResponse = laserSer.readline().decode('ascii')
+                print("response data: " +laserResponse)
+                laserSer.flush()
+            except Exception as e:
+                print('Exception: Writing to serial port: '+ str(e))
+            print('405 Laser On')
+        else:
+            print('Connection failure')
+    else:
+        try:
+            laserSer.open()
+        except Exception as e:
+            print('Exception: Opening serial port: '+ str(e))
+
+        if laserSer.isOpen():
+            #laserSer.flushInput()
+            #laserSer.flushOutput()
+
+            laserSer.write(str.encode('L 0\r\n')) 
+            print("405 Off command written")
+            try:
+                laserResponse = laserSer.readline().decode('ascii')
+                print("response data: " +laserResponse)
+                laserSer.flush()
+            except Exception as e:
+                print('Exception: Writing to serial port: '+ str(e))
+            print('405 Laser Off')
+        else:
+            print('Connection failure')
+
+def laser3_power_control(laservariable, laserpower):
+
+    laserSer = serial.Serial(l405_serialport,l405_baudrate)
+    laserSer.bytesize = serial.EIGHTBITS # bits per byte
+    laserSer.parity = serial.PARITY_NONE
+    laserSer.stopbits = serial.STOPBITS_ONE
+    laserSer.timeout = 5
+    laserSer.xonxoff = False #disable software flow conrol
+    laserSer.rtscts = False #disable hardware (RTS/CTS) flow control
+    laserSer.dsrdtr =  False #disable hardware (DSR/DTR) flow control
+    laserSer.writeTimeout = 0 #timeout for write
+
+    print('Starting RS-232 Communication Setup for power')
+
+
+    if laservariable:
+        try:
+            laserSer.open()
+        except Exception as e:
+            print('Exception: Opening serial port: '+ str(e))
+    
+        if laserSer.isOpen():
+            laserCommand = 'P ' + str(laserpower) +'\n'
+            laserSer.write(str.encode(laserCommand)) 
+
+            print("405 Power" + laserCommand)
+            try:
+                laserResponse = laserSer.readline().decode('ascii')
+                print("response data: " +laserResponse)
+                laserSer.flush()
+            except Exception as e:
+                print('Exception: Writing to serial port: '+ str(e))
+            print('405 Power Set')
+        else:
+            print('Connection failure')
+    else:
+        try:
+            laserSer.open()
+        except Exception as e:
+            print('Exception: Opening serial port: '+ str(e))
+
+        if laserSer.isOpen():
+            try:
+                laserResponse = laserSer.readline().decode('ascii')
+                print("response data: " +laserResponse)
+
+                showinfo( 
+                title='Warning', message=f'Laser 405 is Off - Turn On Laser to change power!'
+                )
+                laserSer.flush()
+            except Exception as e:
+                print('Exception: Writing to serial port: '+ str(e))
+            print('405 Laser Off')
+        else:
+            print('Connection failure')
+
+## 647 RS-232 Control
+def laser4_control(laservariable):
+    print('Inside 647 Laser')
+
+    laser647Ser = serial.Serial(l647_serialport,l647_baudrate)
+    laser647Ser.bytesize = serial.EIGHTBITS # bits per byte
+    laser647Ser.parity = serial.PARITY_NONE
+    laser647Ser.stopbits = serial.STOPBITS_ONE
+    laser647Ser.timeout = 5
+    laser647Ser.xonxoff = False #disable software flow conrol
+    laser647Ser.rtscts = False #disable hardware (RTS/CTS) flow control
+    laser647Ser.dsrdtr =  False #disable hardware (DSR/DTR) flow control
+    laser647Ser.writeTimeout = 0 #timeout for write
+
+    print('Starting RS-232 Communication Setup')
+
+
+    if laservariable:
+        try:
+            laser647Ser.open()
+        except Exception as e:
+            print('Exception: Opening serial port: '+ str(e))
+    
+        if laser647Ser.isOpen():
+            laser647Ser.write(str.encode('en 1\r\n'))
+            laser647Ser.write(str.encode('la on\r\n')) 
+
+            print("647 On command written")
+            try:
+                laserResponse = laser647Ser.readline().decode('ascii')
+                print("response data: " +laserResponse)
+                laser647Ser.flush()
+            except Exception as e:
+                print('Exception: Writing to serial port: '+ str(e))
+            print('647 Laser On')
+        else:
+            print('Connection failure')
+    else:
+        try:
+            laser647Ser.open()
+        except Exception as e:
+            print('Exception: Opening serial port: '+ str(e))
+
+        if laser647Ser.isOpen():
+            laser647Ser.write(str.encode('la off\r\n')) 
+            print("647 Off command written")
+            try:
+                laserResponse = laser647Ser.readline().decode('ascii')
+                print("response data: " +laserResponse)
+                laser647Ser.flush()
+            except Exception as e:
+                print('Exception: Writing to serial port: '+ str(e))
+            print('647 Laser Off')
+        else:
+            print('Connection failure')
+
+#647 Power Control
+def laser4_power_control(laservariable, laserpower):
+
+    laser647Ser = serial.Serial(l647_serialport,l647_baudrate)
+    laser647Ser.bytesize = serial.EIGHTBITS # bits per byte
+    laser647Ser.parity = serial.PARITY_NONE
+    laser647Ser.stopbits = serial.STOPBITS_ONE
+    laser647Ser.timeout = 5
+    laser647Ser.xonxoff = False #disable software flow conrol
+    laser647Ser.rtscts = False #disable hardware (RTS/CTS) flow control
+    laser647Ser.dsrdtr =  False #disable hardware (DSR/DTR) flow control
+    laser647Ser.writeTimeout = 0 #timeout for write
+
+    print('Starting RS-232 Communication Setup for 647 power')
+    
+    laserCalcPower = float(int(laserpower))
+
+    if laservariable:
+        try:
+            laser647Ser.open()
+        except Exception as e:
+            print('Exception: Opening serial port: '+ str(e))
+    
+        if laser647Ser.isOpen():
+            laser647Ser.write(str.encode('en 1\r\n'))
+            laserCommand = 'ch 1 pow ' + str(laserCalcPower) +'\n'
+            laser647Ser.write(str.encode(laserCommand)) 
+
+            print("647 Power" + laserCommand)
+            try:
+                laserResponse = laser647Ser.readline().decode('ascii')
+                print("response data: " +laserResponse)
+                laser647Ser.flush()
+            except Exception as e:
+                print('Exception: Writing to serial port: '+ str(e))
+            print('647 Power Set')
+        else:
+            print('Connection failure')
+    else:
+        try:
+            laser647Ser.open()
+        except Exception as e:
+            print('Exception: Opening serial port: '+ str(e))
+
+        if laser647Ser.isOpen():
+            try:
+                laserResponse = laser647Ser.readline().decode('ascii')
+                print("response data: " +laserResponse)
+
+                showinfo( 
+                title='Warning', message=f'Laser 647 is Off - Turn On Laser to change power!'
+                )
+                laser647Ser.flush()
+            except Exception as e:
+                print('Exception: Writing to serial port: '+ str(e))
+            print('647 Laser Off')
+        else:
+            print('Connection failure')
 
 ## Live view
 def live_loop(stop_signal,output,exposure,opto,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min,R,G,B):

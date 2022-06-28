@@ -1,7 +1,7 @@
 from tkinter.constants import DISABLED, HORIZONTAL, NORMAL
 from PIL import Image, ImageTk # numpy to GUI element
 import tkinter as tk
-from tkinter import ttk
+from tkinter import TRUE, ttk
 import threading
 import torch.multiprocessing as mp
 import numpy as np
@@ -9,6 +9,7 @@ import athesim_functions as asf
 import time
 from pycromanager import Bridge # camera control
 import torch
+from tkinter.messagebox import showinfo
 
 ## ML-SIM App
 class ML_App:
@@ -45,9 +46,6 @@ class ML_App:
         self.B = tk.IntVar()
         self.bChan = tk.Checkbutton(self.tab2,variable=self.B)
         self.bChan.place(x=118, y=324)
-
-
-
 
         self.multi_label = tk.Label(self.tab2, text = "Use optosplit")
         self.multi_label.place(x = 30,y = 122)
@@ -103,6 +101,7 @@ class ML_App:
         
         self.live = tk.Button(self.tab1, width=10, text='Preview', command = self.start_live)
         self.live.place(x=15, y=20)
+
         self.Stop_live = tk.Button(self.tab1, width=10, text='Stop', command = self.stop_live)
         self.Stop_live.place(x=15, y=50)
 
@@ -114,13 +113,13 @@ class ML_App:
         self.panel.image = img  
         self.panel.place(x=150, y=20)
 
-        imgo = Image.open('optosplit.jpg')
+        imgo = Image.open('C:/Users/SIM_Admin/Documents/GitHub/Code/Hardware control/live ML-SIM/optosplit.jpg')
         test =  ImageTk.PhotoImage(imgo)
         self.optosplit = tk.Label(self.tab2, image=test)
         self.optosplit.image = test  
         self.optosplit.place(x=150, y=20)
 
-        imgo = Image.open('Clipboard.png')
+        imgo = Image.open('C:/Users/SIM_Admin/Documents/GitHub/Code/Hardware control/live ML-SIM/Clipboard.png')
         test =  ImageTk.PhotoImage(imgo)
         self.logo = tk.Label(image=test)
         self.logo.image = test  
@@ -128,7 +127,112 @@ class ML_App:
 
 
         self.quit_button = tk.Button(self.tab1,width=10, fg = "red", text='Quit',command=self.quit_gui) # quit the GUI
-        self.quit_button.place(x=15, y=190)       
+        self.quit_button.place(x=15, y=170)    
+
+        self.laservariable=0
+        self.laser2variable=0
+        self.laser3variable=0   
+
+        ## laser control gui
+        self.laser1button_On = tk.Button(self.tab1, width=8, text='L561 On', command = self.laser_control_checkbox)
+        self.laser1button_On.place(x=10, y=210)
+
+        self.laser1button_Off = tk.Button(self.tab1, width=8, text='L561 Off', command = self.laser_control_checkbox_off)
+        self.laser1button_Off.place(x=80, y=210)
+
+        self.l561_label = tk.Label(self.tab1, text = "L561 Power (mW)")
+        self.l561_label.place(x = 11,y = 240)
+
+        l561_power_range = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+        l561_selected_power = tk.StringVar()
+        l561_power_cb = ttk.Combobox(root, textvariable=l561_selected_power)
+        l561_power_cb['values'] = [l561_power_range[p] for p in range(0,18)]
+        l561_power_cb['state'] = 'readonly'
+        l561_power_cb.place(x=120,y=325,width=35)
+
+        def l561_power_changed(event):
+            showinfo( 
+                title='Result', message=f'You selected {l561_selected_power.get()} mW!'
+                )
+            #asf.laser2_power_control(self.laser3variable,selected_power.get())
+        
+        l561_power_cb.bind('<<ComboboxSelected>>', l561_power_changed)
+
+        self.laser2button_On = tk.Button(self.tab1, width=8, text='L488 On', command = self.laser2_control_checkbox)
+        self.laser2button_On.place(x=10, y=270)
+
+        self.laser2button_Off = tk.Button(self.tab1, width=8, text='L488 Off', command = self.laser2_control_checkbox_off)
+        self.laser2button_Off.place(x=80, y=270)
+
+        self.l488_label = tk.Label(self.tab1, text = "L488 Power (mW)")
+        self.l488_label.place(x = 11,y = 300)
+
+        l488_power_range = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,30,40,50,60,70,80,90,100]
+        l488_selected_power = tk.StringVar()
+        l488_power_cb = ttk.Combobox(root, textvariable=l488_selected_power)
+        l488_power_cb['values'] = [l488_power_range[p] for p in range(0,28)]
+        l488_power_cb['state'] = 'readonly'
+        l488_power_cb.place(x=120,y=385,width=35)
+
+        def l488_power_changed(event):
+            showinfo( 
+                title='Result', message=f'You selected {l488_selected_power.get()} mW!'
+                )
+            asf.laser2_power_control(self.laser2variable,l488_selected_power.get())
+        
+        l488_power_cb.bind('<<ComboboxSelected>>', l488_power_changed)
+
+
+        self.laser3button_On = tk.Button(self.tab1, width=8, text='L405 On', command = self.laser3_control_checkbox)
+        self.laser3button_On.place(x=10, y=330)
+
+        self.laser3button_Off = tk.Button(self.tab1, width=8, text='L405 Off', command = self.laser3_control_checkbox_off)
+        self.laser3button_Off.place(x=80, y=330)
+
+        self.l405_label = tk.Label(self.tab1, text = "L405 Power (mW)")
+        self.l405_label.place(x = 11,y = 360)
+
+        l405_power_range = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+        l405_selected_power = tk.StringVar()
+        l405_power_cb = ttk.Combobox(root, textvariable=l405_selected_power)
+        l405_power_cb['values'] = [l405_power_range[p] for p in range(0,18)]
+        l405_power_cb['state'] = 'readonly'
+        l405_power_cb.place(x=120,y=445,width=35)
+
+        def l405_power_changed(event):
+            showinfo( 
+                title='Result', message=f'You selected {l405_selected_power.get()} mW!'
+                )
+            asf.laser3_power_control(self.laser3variable,l405_selected_power.get())
+        
+        l405_power_cb.bind('<<ComboboxSelected>>', l405_power_changed)
+
+        #647 Laser
+
+        self.laser4button_On = tk.Button(self.tab1, width=8, text='L647 On', command = self.laser4_control_checkbox)
+        self.laser4button_On.place(x=10, y=390)
+
+        self.laser4button_Off = tk.Button(self.tab1, width=8, text='L647 Off', command = self.laser4_control_checkbox_off)
+        self.laser4button_Off.place(x=80, y=390)
+
+        self.l647_label = tk.Label(self.tab1, text = "L647 Power (mW)")
+        self.l647_label.place(x = 11,y = 420)
+
+        l647_power_range = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+        l647_selected_power = tk.StringVar()
+        l647_power_cb = ttk.Combobox(root, textvariable=l647_selected_power)
+        l647_power_cb['values'] = [l647_power_range[p] for p in range(0,18)]
+        l647_power_cb['state'] = 'readonly'
+        l647_power_cb.place(x=120,y=505,width=35)
+
+        def l647_power_changed(event):
+            showinfo( 
+                title='Result', message=f'You selected {l647_selected_power.get()}!'
+                )
+            asf.laser4_power_control(self.laser4variable,l647_selected_power.get())
+        
+        l647_power_cb.bind('<<ComboboxSelected>>', l647_power_changed)
+
 
         self.start_live_decon = tk.Button(self.tab1,width=10, text='Live ML-SIM', command = self.start_ml_sim) # start live sim
         self.start_live_decon.place(x=15, y=80)
@@ -141,30 +245,33 @@ class ML_App:
         self.exposure = tk.Entry(self.tab1,textvariable=self.expTime) # exposure time field
         self.exposure.place(x=15, y=140, width=50)
 
+        self.display_label = tk.Label(self.tab1, text = "Display range")
+        self.display_label.place(x = 13,y = 440)
+
         self.iMin = tk.IntVar()
-        self.iMin.set(00)
+        self.iMin.set(0)
         self.limLow = tk.Entry(self.tab1,textvariable=self.iMin) # Display range field
-        self.limLow.place(x=15, y=363, width=30)
+        self.limLow.place(x=15, y=460, width=30)
 
         self.iMax = tk.IntVar()
         self.iMax.set(100)
         self.limHigh = tk.Entry(self.tab1,textvariable=self.iMax) # Display range field
-        self.limHigh.place(x=50, y=363, width=30)
+        self.limHigh.place(x=50, y=460, width=30)
+
+        self.display_label = tk.Label(self.tab1, text = "Reconstruction range")
+        self.display_label.place(x = 13,y = 480)
 
         self.rMin = tk.IntVar()
         self.rMin.set(50)
         self.rlimLow = tk.Entry(self.tab1,textvariable=self.rMin) # Reconstruction range field
-        self.rlimLow.place(x=15, y=423, width=30)
+        self.rlimLow.place(x=15, y=500, width=30)
 
         self.rMax = tk.IntVar()
         self.rMax.set(1000)
         self.rlimHigh = tk.Entry(self.tab1,textvariable=self.rMax) # Reconstruction range field
-        self.rlimHigh.place(x=50, y=423, width=30)
+        self.rlimHigh.place(x=50, y=500, width=30)
 
-        self.display_label = tk.Label(self.tab1, text = "Display range")
-        self.display_label.place(x = 13,y = 340)
-        self.display_label = tk.Label(self.tab1, text = "Reconstruction range")
-        self.display_label.place(x = 13,y = 400)
+        
         self.exposure_label = tk.Label(self.tab1, text = "Exposure time (ms)")
         self.exposure_label.place(x = 13,y = 117)
 
@@ -199,7 +306,55 @@ class ML_App:
                 core = bridge.get_core()
                 ROI = [xOffset, yOffset, 512, 512] # build ROI 
                 core.set_roi(*ROI) # set ROI    
-        
+    
+    def laser_control_checkbox(self):
+        self.laservariable = 1
+        asf.laser_control(self.laservariable)
+        self.laser1button_On['state'] = tk.DISABLED
+        self.laser1button_Off['state'] = tk.NORMAL
+
+    def laser_control_checkbox_off(self):
+        self.laservariable = 0
+        asf.laser_control(self.laservariable)
+        self.laser1button_Off['state'] = tk.DISABLED
+        self.laser1button_On['state'] = tk.NORMAL
+
+    def laser2_control_checkbox(self):
+        self.laser2variable = 1
+        asf.laser2_control(self.laser2variable)
+        self.laser2button_On['state'] = tk.DISABLED
+        self.laser2button_Off['state'] = tk.NORMAL
+
+    def laser2_control_checkbox_off(self):
+        self.laser2variable = 0
+        asf.laser2_control(self.laser2variable)
+        self.laser2button_Off['state'] = tk.DISABLED
+        self.laser2button_On['state'] = tk.NORMAL
+    
+    def laser3_control_checkbox(self):
+        self.laser3variable = 1
+        asf.laser3_control(self.laser3variable)
+        self.laser3button_On['state'] = tk.DISABLED
+        self.laser3button_Off['state'] = tk.NORMAL
+
+    def laser3_control_checkbox_off(self):
+        self.laser3variable = 0
+        asf.laser3_control(self.laser3variable)
+        self.laser3button_Off['state'] = tk.DISABLED
+        self.laser3button_On['state'] = tk.NORMAL
+    
+    def laser4_control_checkbox(self):
+        self.laser4variable = 1
+        asf.laser4_control(self.laser4variable)
+        self.laser4button_On['state'] = tk.DISABLED
+        self.laser4button_Off['state'] = tk.NORMAL
+
+    def laser4_control_checkbox_off(self):
+        self.laser4variable = 0
+        asf.laser4_control(self.laser4variable)
+        self.laser4button_Off['state'] = tk.DISABLED
+        self.laser4button_On['state'] = tk.NORMAL
+
     def start_live(self):
         self.start_live_decon["state"] == DISABLED
         self.quit_button["state"] == DISABLED
