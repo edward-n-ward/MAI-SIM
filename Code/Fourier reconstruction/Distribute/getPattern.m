@@ -6,7 +6,7 @@ clear all
 %% read image file
 a_num=3;% number of pattern orientations
 p_num=3;% phase shift times for each pattern orientation
-filepath = 'D:\SIM Data\04-03-2022\tubGreen_2\fixed good phases.tif';
+filepath = 'C:\Users\ew535\Desktop\Reconstruction comparison\1.tif';
 
 %% parameter of the detection system
 lambda=590;% fluorescence emission wavelength (emission maximum). unit: nm
@@ -133,7 +133,7 @@ end
 % my_phase_auto=mod(-auto_phase,2*pi);
 % my_phase_cc=mod(cc_phase,2*pi);
 
-inv_phase=auto_phase;
+% inv_phase=auto_phase;
 patterns = zeros(size(noiseimagef));
 xn=xr+xsize/2; xn = 2*pi*xn./max(xn(:));
 yn=yr+ysize/2; yn = 2*pi*yn./max(yn(:));
