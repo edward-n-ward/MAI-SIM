@@ -1,3 +1,4 @@
+from datetime import datetime
 from tkinter.constants import DISABLED, HORIZONTAL, NORMAL
 from PIL import Image, ImageTk # numpy to GUI element
 import tkinter as tk
@@ -271,8 +272,8 @@ class ML_App:
         self.rlimHigh = tk.Entry(self.tab1,textvariable=self.rMax) # Reconstruction range field
         self.rlimHigh.place(x=50, y=500, width=30)
 
-        self.start_live_decon = tk.Button(self.tab1,width=10, text='Save Image', command = self.start_os_sim) # capture and save current image
-        self.start_live_decon.place(x=15, y=110)
+        self.save_image_btn = tk.Button(self.tab1,width=10, text='Save Image', command = self.save_image) # capture and save current image
+        self.save_image_btn.place(x=15, y=110)
 
         self.exposure_label = tk.Label(self.tab1, text = "Exposure time (ms)")
         self.exposure_label.place(x = 13,y = 143)
@@ -585,6 +586,10 @@ class ML_App:
         self.live["state"] == NORMAL
         self.quit_button["state"] == NORMAL
 
+    def save_image(self):
+        print('Save Image Enabled')
+        self.save_image_btn["state"] = DISABLED
+
     def plot(self,child_max,child_min,rchild_max,rchild_min):
         while True: 
 
@@ -611,6 +616,34 @@ class ML_App:
                     img =  ImageTk.PhotoImage(image=Image.fromarray(image_array,mode='L')) # convert numpy array to tikner object 
                     self.panel.configure(image=img) # update the GUI element
                     self.panel.image = img  
+
+                    # Capture image and save with appropriate label
+                    if(self.save_image_btn["state"] == DISABLED):
+                        now = datetime.now()
+                        hr = now.hour
+                        min = now.minute
+                        sec = now.second
+                        imageName = 'OS-SIM_Image_'
+                        time_label = '_' + str(hr) +'-'+ str(min) + '-' + str(sec)
+                        if(self.live["state"] == DISABLED and self.quit_button["state"] == DISABLED):
+                            imageName = imageName + 'Recons_'
+                        else:
+                            imageName = 'OS-SIM_Image_'
+                        filename = imageName + str(datetime.now().date()) + time_label + '.png'
+                        filepath = 'C:/Users/SIM_Admin/Documents/GitHub/ML-OS-SIM/ML-OS-SIM-interface/hardware control/live OS-SIM/Saved Images/' + filename
+                        picture = Image.fromarray(image_array,mode='L')
+                        picture = picture.convert('L')
+                        picture = picture.save(filepath)
+                        print('Image Captured:' + filename)
+                        print('Save button status',self.save_image_btn["state"])
+                        self.save_image_btn["state"] = NORMAL
+                        print('Save button status',self.save_image_btn["state"])
+                        self.save_image_btn["state"] = tk.NORMAL
+                    else:
+                        #print('Save buttton disabled')
+                        self.save_image_btn["state"] == NORMAL
+                        self.save_image_btn["state"] == tk.NORMAL
+
                 elif len(image_array.shape)==3:
                     r = image_array[:,:,0]
                     g = image_array[:,:,1]
@@ -620,14 +653,40 @@ class ML_App:
                     g = g-np.amin(g)
                     g = 255*(g/np.amax(g))
                     result[:,:,0] = r
-                    result[:,:,1] = g
-                    
+                    result[:,:,1] = g 
                     result = result.astype('uint8')
-                    img =  ImageTk.PhotoImage(image=Image.fromarray(result,mode='RGB')) # convert numpy array to tikner object 
-                    self.panel.configure(image=img) # update the GUI element
-                    self.panel.image = img 
+
+                    # Capture image and save with appropriate label
+                    if(self.save_image_btn["state"] == DISABLED):
+                        now = datetime.now()
+                        hr = now.hour
+                        min = now.minute
+                        sec = now.second
+                        imageName = 'OS-SIM_Image_'
+                        time_label = '_' + str(hr) +'-'+ str(min) + '-' + str(sec)
+                        if(self.live["state"] == DISABLED and self.quit_button["state"] == DISABLED):
+                            imageName = imageName + 'Recons_'
+                        else:
+                            imageName = 'OS-SIM_Image_'
+                        filename = imageName + str(datetime.now().date()) + time_label + '.png'
+                        filepath = 'C:/Users/SIM_Admin/Documents/GitHub/ML-OS-SIM/ML-OS-SIM-interface/hardware control/live OS-SIM/Saved Images/' + filename
+                        picture = Image.fromarray(image_array,mode='L')
+                        picture = picture.convert('L')
+                        picture = picture.save(filepath)
+                        print('Image Captured:' + filename)
+                        print('Save button status',self.save_image_btn["state"])
+                        self.save_image_btn["state"] = NORMAL
+                        print('Save button status',self.save_image_btn["state"])
+                        self.save_image_btn["state"] = tk.NORMAL
+                    else:
+                        #print('Save buttton disabled')
+                        self.save_image_btn["state"] == NORMAL
+                        self.save_image_btn["state"] == tk.NORMAL
+                    
+
             # else:
                 # print('imArray was empty')
+
 
 if __name__ == '__main__':
     root = tk.Tk()
