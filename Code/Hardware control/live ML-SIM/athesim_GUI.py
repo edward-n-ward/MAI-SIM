@@ -1,8 +1,11 @@
+from datetime import datetime
 from tkinter.constants import DISABLED, HORIZONTAL, NORMAL
 from PIL import Image, ImageTk # numpy to GUI element
 import tkinter as tk
-from tkinter import TRUE, ttk
+from tkinter import ACTIVE, TRUE, ttk
 import threading
+#from pyrsistent import T
+from sqlalchemy import false
 import torch.multiprocessing as mp
 import numpy as np
 import athesim_functions as asf
@@ -24,7 +27,7 @@ class ML_App:
         self.tab2 = ttk.Frame(tabControl)
         tabControl.add(self.tab1, text ='Acquisition control')
         tabControl.add(self.tab2, text ='Hardware properties')
-        tabControl.place(x = 5,y = 60, width = 690, height = 575)
+        tabControl.place(x = 5,y = 60, width = 690, height = 585)
 
         self.stop_signal = mp.Queue()
         self.output = mp.Queue()
@@ -92,12 +95,12 @@ class ML_App:
         self.x3_label = tk.Label(self.tab2, text = "x3 ")
         self.x3_label.place(x = 40,y=326) 
 
-
-
-
         self.opto_text = tk.Label(self.tab2, text = "Optosplit parameters")
         self.opto_text.place(x = 15,y=257)         
 
+        # Testing Z button for stage control 
+        #self.z_button = tk.Button(self.tab1, width=10, text='Z Axis-OS', command = self.z_control)
+        #self.z_button.place(x=15, y=525)
         
         self.live = tk.Button(self.tab1, width=10, text='Preview', command = self.start_live)
         self.live.place(x=15, y=20)
@@ -111,7 +114,7 @@ class ML_App:
         self.panel = tk.Label(self.tab1, image=img)
         self.panel.configure(image=img) # update the GUI element
         self.panel.image = img  
-        self.panel.place(x=150, y=20)
+        self.panel.place(x=155, y=20)
 
         imgo = Image.open('C:/Users/SIM_Admin/Documents/GitHub/Code/Hardware control/live ML-SIM/optosplit.jpg')
         test =  ImageTk.PhotoImage(imgo)
@@ -143,18 +146,18 @@ class ML_App:
         self.l561_label = tk.Label(self.tab1, text = "L561 Power (mW)")
         self.l561_label.place(x = 11,y = 240)
 
-        l561_power_range = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+        l561_power_range = list(range(1,101))
         l561_selected_power = tk.StringVar()
-        l561_power_cb = ttk.Combobox(root, textvariable=l561_selected_power)
-        l561_power_cb['values'] = [l561_power_range[p] for p in range(0,18)]
+        l561_power_cb = ttk.Combobox(self.tab1, textvariable=l561_selected_power)
+        l561_power_cb['values'] = [l561_power_range[p] for p in range(0,100)]
         l561_power_cb['state'] = 'readonly'
-        l561_power_cb.place(x=120,y=325,width=35)
+        l561_power_cb.place(x=115,y=240,width=35)
 
         def l561_power_changed(event):
             showinfo( 
                 title='Result', message=f'You selected {l561_selected_power.get()} mW!'
                 )
-            #asf.laser2_power_control(self.laser3variable,selected_power.get())
+            asf.laserAOTF_power_control(self.laservariable,l561_selected_power.get())
         
         l561_power_cb.bind('<<ComboboxSelected>>', l561_power_changed)
 
@@ -167,12 +170,12 @@ class ML_App:
         self.l488_label = tk.Label(self.tab1, text = "L488 Power (mW)")
         self.l488_label.place(x = 11,y = 300)
 
-        l488_power_range = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,30,40,50,60,70,80,90,100]
+        l488_power_range = list(range(1,101))
         l488_selected_power = tk.StringVar()
-        l488_power_cb = ttk.Combobox(root, textvariable=l488_selected_power)
-        l488_power_cb['values'] = [l488_power_range[p] for p in range(0,28)]
+        l488_power_cb = ttk.Combobox(self.tab1, textvariable=l488_selected_power)
+        l488_power_cb['values'] = [l488_power_range[p] for p in range(0,100)]
         l488_power_cb['state'] = 'readonly'
-        l488_power_cb.place(x=120,y=385,width=35)
+        l488_power_cb.place(x=115,y=300,width=35)
 
         def l488_power_changed(event):
             showinfo( 
@@ -192,12 +195,12 @@ class ML_App:
         self.l405_label = tk.Label(self.tab1, text = "L405 Power (mW)")
         self.l405_label.place(x = 11,y = 360)
 
-        l405_power_range = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+        l405_power_range = list(range(1,101))
         l405_selected_power = tk.StringVar()
-        l405_power_cb = ttk.Combobox(root, textvariable=l405_selected_power)
-        l405_power_cb['values'] = [l405_power_range[p] for p in range(0,18)]
+        l405_power_cb = ttk.Combobox(self.tab1, textvariable=l405_selected_power)
+        l405_power_cb['values'] = [l405_power_range[p] for p in range(0,100)]
         l405_power_cb['state'] = 'readonly'
-        l405_power_cb.place(x=120,y=445,width=35)
+        l405_power_cb.place(x=115,y=360,width=35)
 
         def l405_power_changed(event):
             showinfo( 
@@ -218,12 +221,12 @@ class ML_App:
         self.l647_label = tk.Label(self.tab1, text = "L647 Power (mW)")
         self.l647_label.place(x = 11,y = 420)
 
-        l647_power_range = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+        l647_power_range = list(range(1,101))
         l647_selected_power = tk.StringVar()
-        l647_power_cb = ttk.Combobox(root, textvariable=l647_selected_power)
-        l647_power_cb['values'] = [l647_power_range[p] for p in range(0,18)]
+        l647_power_cb = ttk.Combobox(self.tab1, textvariable=l647_selected_power)
+        l647_power_cb['values'] = [l647_power_range[p] for p in range(0,100)]
         l647_power_cb['state'] = 'readonly'
-        l647_power_cb.place(x=120,y=505,width=35)
+        l647_power_cb.place(x=115,y=420,width=35)
 
         def l647_power_changed(event):
             showinfo( 
@@ -239,11 +242,6 @@ class ML_App:
 
         self.update_ROI = tk.Button(self.tab2,width=10, text='Update ROI') #update camera ROI
         self.update_ROI.place(x=15, y=220)
-
-        self.expTime = tk.IntVar()
-        self.expTime.set(80)
-        self.exposure = tk.Entry(self.tab1,textvariable=self.expTime) # exposure time field
-        self.exposure.place(x=15, y=140, width=50)
 
         self.display_label = tk.Label(self.tab1, text = "Display range")
         self.display_label.place(x = 13,y = 440)
@@ -271,9 +269,16 @@ class ML_App:
         self.rlimHigh = tk.Entry(self.tab1,textvariable=self.rMax) # Reconstruction range field
         self.rlimHigh.place(x=50, y=500, width=30)
 
-        
+        self.save_image_btn= tk.Button(self.tab1,width=10, text='Save Image', command = self.save_image) # capture and save current image
+        self.save_image_btn.place(x=15, y=110)
+
         self.exposure_label = tk.Label(self.tab1, text = "Exposure time (ms)")
-        self.exposure_label.place(x = 13,y = 117)
+        self.exposure_label.place(x = 13,y = 143)
+
+        self.expTime = tk.IntVar()
+        self.expTime.set(80)
+        self.exposure = tk.Entry(self.tab1,textvariable=self.expTime) # exposure time field
+        self.exposure.place(x=120, y=143, width=35)
 
         self.xOff = tk.IntVar()
         self.xOff.set(710)
@@ -355,9 +360,18 @@ class ML_App:
         self.laser4button_Off['state'] = tk.DISABLED
         self.laser4button_On['state'] = tk.NORMAL
 
+    def z_control(self):
+        z_min_value = 1.1500 # to et to the lowest membrane layer of the cell
+        z_max_value = 5.7300 # to get to the surface - uppermost layer of the cell
+        stepsize = 0.04580 # Steps to get 10 slices 
+
+        for z in range(z_min_value, z_max_value, stepsize):
+            asf.z_axis_control(z,self.z_button['state'])
+
+
     def start_live(self):
-        self.start_live_decon["state"] == DISABLED
-        self.quit_button["state"] == DISABLED
+        self.start_live_decon["state"] = DISABLED # disabled ml and quit while preview
+        self.quit_button["state"] = DISABLED
         optosplit = self.opto.get()
         R = self.R.get(); G = self.G.get(); B = self.B.get()
         if optosplit == 1:
@@ -401,7 +415,11 @@ class ML_App:
         child_min = mp.Value('d',1)
         rchild_max = mp.Value('d',1000)
         rchild_min = mp.Value('d',1)
-        self.live_process = mp.Process(target= asf.live_view, args = (self.stop_signal,
+        #self.live_process = mp.Process(target= asf.live_view, args = (self.stop_signal,
+        #    self.output,exposure_time,optosplit,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min,R,G,B))
+        
+        #updated live view v2
+        self.live_process = mp.Process(target= asf.live_view_v2, args = (self.stop_signal,
             self.output,exposure_time,optosplit,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min,R,G,B))
 
         self.live_process.start()
@@ -409,12 +427,12 @@ class ML_App:
         self.plotting_process.start()
 
     def start_ml_sim(self):
-        self.live["state"] == DISABLED
-        self.quit_button["state"] == DISABLED
+        self.live["state"] = DISABLED  # disabled preview and quit while ml-sim
+        self.quit_button["state"] = DISABLED
         optosplit = self.opto.get()
         R = self.R.get(); G = self.G.get(); B = self.B.get()
         if optosplit == 1:
-            x1 = self.x1.get() # get ROI variables from the GUI input
+            x1 = self.x1.get() # get ROI variables from the GUI input                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
             y1 = self.y1.get()
             x2 = self.x2.get() # get ROI variables from the GUI input
             y2 = self.y2.get()
@@ -454,8 +472,13 @@ class ML_App:
         rchild_max = mp.Value('d',1000)
         rchild_min = mp.Value('d',1)
 
-        self.live_process = mp.Process(target= asf.live_ml_sim, args = (self.stack,self.stop_signal,self.output,
+        #self.live_process = mp.Process(target= asf.live_ml_sim, args = (self.stack,self.stop_signal,self.output,
+        #    exposure_time,optosplit,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min,R,G,B))
+        
+        #updated live ml process v2
+        self.live_process = mp.Process(target= asf.live_ml_sim_v2, args = (self.stack,self.stop_signal,self.output,
             exposure_time,optosplit,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min,R,G,B))
+
         self.live_process.start()
 
         self.plotting_process = threading.Thread(target= self.plot, args = (child_max,child_min,rchild_max,rchild_min))
@@ -468,9 +491,15 @@ class ML_App:
 
     def stop_live(self):
         self.stop_signal.put(False)
-        self.start_live_decon["state"] == NORMAL
-        self.live["state"] == NORMAL
-        self.quit_button["state"] == NORMAL
+        self.start_live_decon["state"] = NORMAL # enable all options on quit 
+        self.live["state"] = NORMAL
+        self.quit_button["state"] = NORMAL
+
+    def save_image(self):
+        print('Save Image Enabled')
+        self.save_image_btn["state"] = DISABLED
+
+
 
     def plot(self,child_max,child_min,rchild_max,rchild_min):
         while True: 
@@ -498,6 +527,33 @@ class ML_App:
                     img =  ImageTk.PhotoImage(image=Image.fromarray(image_array,mode='L')) # convert numpy array to tikner object 
                     self.panel.configure(image=img) # update the GUI element
                     self.panel.image = img  
+
+                    # Capture image and save with appropriate label
+                    if(self.save_image_btn["state"] == DISABLED):
+                        now = datetime.now()
+                        hr = now.hour
+                        min = now.minute
+                        sec = now.second
+                        imageName = 'Image_'
+                        time_label = '_' + str(hr) +'-'+ str(min) + '-' + str(sec)
+                        if(self.live["state"] == DISABLED and self.quit_button["state"] == DISABLED):
+                            imageName = imageName + 'Recons_'
+                        else:
+                            imageName = 'Image_'
+                        filename = imageName + str(datetime.now().date()) + time_label + '.png'
+                        filepath = 'C:/Users/SIM_Admin/Documents/GitHub/Code/Hardware control/live ML-SIM/Saved_Images/' + filename
+                        picture = Image.fromarray(image_array,mode='L')
+                        picture = picture.convert('L')
+                        picture = picture.save(filepath)
+                        print('Image Captured:' + filename)
+                        print('Save button status',self.save_image_btn["state"])
+                        self.save_image_btn["state"] = NORMAL
+                        print('Save button status',self.save_image_btn["state"])
+                        self.save_image_btn["state"] = tk.NORMAL
+                    else:
+                        print('Save buttton disabled')
+                        self.save_image_btn["state"] == NORMAL
+                        self.save_image_btn["state"] == tk.NORMAL
                 elif len(image_array.shape)==3:
                     r = image_array[:,:,0]
                     g = image_array[:,:,1]
@@ -507,12 +563,37 @@ class ML_App:
                     g = g-np.amin(g)
                     g = 255*(g/np.amax(g))
                     result[:,:,0] = r
-                    result[:,:,1] = g
-                    
+                    result[:,:,1] = g 
                     result = result.astype('uint8')
-                    img =  ImageTk.PhotoImage(image=Image.fromarray(result,mode='RGB')) # convert numpy array to tikner object 
-                    self.panel.configure(image=img) # update the GUI element
-                    self.panel.image = img 
+
+                    # Capture image and save with appropriate label
+                    if(self.save_image_btn["state"] == DISABLED):
+                        now = datetime.now()
+                        hr = now.hour
+                        min = now.minute
+                        sec = now.second
+                        imageName = 'Image_'
+                        time_label = '_' + str(hr) +'-'+ str(min) + '-' + str(sec)
+                        if(self.live["state"] == DISABLED and self.quit_button["state"] == DISABLED):
+                            imageName = imageName + 'Recons_'
+                        else:
+                            imageName = 'Image_'
+                        filename = imageName + str(datetime.now().date()) + time_label + '.png'
+                        filepath = 'C:/Users/SIM_Admin/Documents/GitHub/Code/Hardware control/live ML-SIM/Saved_Images/' + filename
+                        picture = Image.fromarray(image_array,mode='L')
+                        picture = picture.convert('L')
+                        picture = picture.save(filepath)
+                        print('Image Captured:' + filename)
+                        print('Save button status',self.save_image_btn["state"])
+                        self.save_image_btn["state"] = NORMAL
+                        print('Save button status',self.save_image_btn["state"])
+                        self.save_image_btn["state"] = tk.NORMAL
+                    else:
+                        print('Save buttton disabled')
+                        self.save_image_btn["state"] == NORMAL
+                        self.save_image_btn["state"] == tk.NORMAL
+                    
+
             # else:
                 # print('imArray was empty')
 

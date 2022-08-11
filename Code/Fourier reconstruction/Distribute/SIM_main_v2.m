@@ -14,14 +14,14 @@ fileformat='tif';
 
 %% parameter of the detection system
 lambda=590;% fluorescence emission wavelength (emission maximum). unit: nm
-psize=85; 
+psize=50; 
 % psize=pixel size/magnification power. unit: nm
-NA=1.2;
+NA=1.49;
 
 %% parameter for reconstruction
 wiener_factor=0.1;
 
-mask_factor=0.4;%a high-pass mask (fmask) is utilized to estimate the modulation vector;
+mask_factor=0.6;%a high-pass mask (fmask) is utilized to estimate the modulation vector;
 % the cutoff frequency of fmask is mask_factor*(cutoff frequency of the detection OTF)
 % recommended value: 0.6 for conventional SIM, 0.8 for TIRF-SIM
 
@@ -83,7 +83,7 @@ for ii=1:a_num
     for jj=1:p_num
         %noiseimage(:,:,ii,jj)=quasi_wnr(OTFde,squeeze(noiseimage(:,:,ii,jj)),wiener_factor^2);
 
-        %noiseimage(:,:,ii,jj)=deconvlucy(noiseimage(:,:,ii,jj),ipsfde,3);
+        noiseimage(:,:,ii,jj)=deconvlucy(noiseimage(:,:,ii,jj),ipsfde,3);
         %pre-deconvolution. It can be applied to suppress noises in experiments
         
       noiseimage(:,:,ii,jj)=noiseimage(:,:,ii,jj).*(noiseimage(:,:,ii,jj)>0);
