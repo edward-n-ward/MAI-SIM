@@ -1054,9 +1054,9 @@ def live_loop_zsection(stop_signal,output,exposure,opto,x1,y1,x2,y2,x3,y3,rchild
 
 # Live-View for Z-sectioning 
 def live_view_zsection(stop_signal,output,exposure,opto,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min,R,G,B):
-    print('Running z-sectioned version live view OS')
+    print('Running z-sectioned version OS preview')
     processes = [] # initialise processes 
-    proc_live = mp.Process(target=live_loop_v2, args=(stop_signal,output,exposure,opto,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min,R,G,B))
+    proc_live = mp.Process(target=live_loop_zsection, args=(stop_signal,output,exposure,opto,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min,R,G,B))
     processes.append(proc_live)
 
     processes.reverse()
@@ -1065,3 +1065,18 @@ def live_view_zsection(stop_signal,output,exposure,opto,x1,y1,x2,y2,x3,y3,rchild
 
     for process in processes:
         process.join()  
+
+## Start live OS-SIM for Z-Sectioning Updtaed 
+def live_os_sim_zsection(stack,stop_signal,output,exposure,opto,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min,R,G,B):
+    print('Running  z-sectioned version live OS sim')
+    processes = [] # initialise processes 
+    proc_live = mp.Process(target=acquisition_loop_v2, args=(stop_signal,stack,exposure))
+    processes.append(proc_live)
+    proc_recon = mp.Process(target=OS_reconstruction, args=(stack,output,opto,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min,R,G,B))
+    processes.append(proc_recon)
+    processes.reverse()
+
+    for process in processes:
+        process.start()
+    for process in processes:
+        process.join() 

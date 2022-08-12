@@ -22,14 +22,14 @@ class ML_App:
 
         self.master = master
         master.title('Live OS-SIM')
-        master.geometry("700x640") # size of gui
+        master.geometry("700x680") # size of gui
         tabControl = ttk.Notebook(self.master)
         
         self.tab1 = ttk.Frame(tabControl)
         self.tab2 = ttk.Frame(tabControl)
         tabControl.add(self.tab1, text ='Acquisition control')
         tabControl.add(self.tab2, text ='Hardware properties')
-        tabControl.place(x = 5,y = 60, width = 690, height = 585)
+        tabControl.place(x = 5,y = 60, width = 690, height = 610)
 
         self.stop_signal = mp.Queue()
         self.output = mp.Queue()
@@ -131,9 +131,12 @@ class ML_App:
         self.quit_button = tk.Button(self.tab1,width=10, fg = "red", text='Quit',command=self.quit_gui) # quit the GUI
         self.quit_button.place(x=15, y=170)    
 
-        # Testing Z button for stage control 
-        self.z_button = tk.Button(self.tab1, width=10, text='Z Axis-OS', command = self.z_control)
-        self.z_button.place(x=15, y=525)
+        #Z button for stage control and OS
+        self.z_preview_button = tk.Button(self.tab1, width=12, text='Z-Axis Preview', command = self.z_control_preview)
+        self.z_preview_button.place(x=15, y=525)
+
+        self.z_live_button = tk.Button(self.tab1, width=12, text='Z-OS SIM Live', command = self.z_control_os_sim_live)
+        self.z_live_button.place(x=15, y=555)
 
         self.laservariable=0
         self.laser2variable=0
@@ -483,7 +486,110 @@ class ML_App:
         time.sleep(1)
         self.master.destroy()
 
-    def z_control(self):
+    def z_control_preview(self):
+        z_min_value = 62.9 # to get to the lowest membrane layer of the cell
+        z_max_value = 1030.0 # to get to the surface - uppermost layer of the cell
+        stepsize = 96.7 # Steps to get 10 slices 
+        # cell z values - Top : 0.00629 bottom : 0.1030 /0.1011  mid = 0.0916 --> 97,98,91,89
+
+        # Communication setup
+        ASI_StageSer = serial.Serial(asi_stage_serialport,asi_stage_baudrate)
+        ASI_StageSer.bytesize = serial.EIGHTBITS # bits per byte
+        ASI_StageSer.parity = serial.PARITY_NONE
+        ASI_StageSer.stopbits = serial.STOPBITS_ONE
+        ASI_StageSer.timeout = 5
+        ASI_StageSer.xonxoff = False #disable software flow conrol
+        ASI_StageSer.rtscts = False #disable hardware (RTS/CTS) flow control
+        ASI_StageSer.dsrdtr =  False #disable hardware (DSR/DTR) flow control
+        ASI_StageSer.writeTimeout = 0 #timeout for write
+
+        print('Starting RS-232 Communication Setup for ASI Stage Control')
+
+        for z in np.arange(z_min_value, z_max_value, stepsize):
+
+            z_axis_value = float(int(z))
+
+            if self.z_button['state']:
+                try:
+                    ASI_StageSer.open()
+                except Exception as e:
+                    print('Exception: Opening serial port: '+ str(e))
+    
+                if ASI_StageSer.isOpen():
+                    ASI_ZCommand = 'M Z=' + str(z_axis_value) +'\r\n'
+                    ASI_StageSer.write(str.encode(ASI_ZCommand)) 
+                    print("AZI Z Command" + ASI_ZCommand)
+                    self.start_live()
+                    #time.sleep(60)
+
+                    optosplit = self.opto.get()
+                    R = self.R.get(); G = self.G.get(); B = self.B.get()
+                    
+                    with Bridge() as bridge: # load camera control library
+                        x1 = self.xOff.get() # get ROI variables from the GUI input
+                        y1 = self.yOff.get()
+                        x2 = 0
+                        y2 = 0
+                        x3 = 0
+                        y3 = 0                
+                        core = bridge.get_core()
+                        ROI = [x1, y1, 512, 512] # build ROI 
+                        core.set_roi(*ROI) # set ROI  
+                        print('Successfully set ROI') 
+                    
+                    exposure_time = self.expTime.get()
+                    child_max = mp.Value('d',1000)
+                    child_min = mp.Value('d',1)
+                    rchild_max = mp.Value('d',1000)
+                    rchild_min = mp.Value('d',1)
+
+                    #updated live view v2
+                    self.live_process = mp.Process(target= asf.live_view_zsection, args = (self.stop_signal,
+                    self.output,exposure_time,optosplit,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min,R,G,B))
+
+                    self.live_process.start()
+                    self.plotting_process = threading.Thread(target= self.plot, args = (child_max,child_min,rchild_max,rchild_min))
+                    self.plotting_process.start()
+
+                    if core.is_sequence_running():
+                        core.stop_sequence_acquisition() # stop the camera 
+
+                   
+                    try:
+                        ASI_StageResponse = ASI_StageSer.readline().decode('ascii')
+                        print("response data: " +ASI_StageResponse)
+                        ASI_StageSer.flush()
+                    except Exception as e:
+                        print('Exception: Writing to serial port: '+ str(e))
+                    print('ASI Stage Z axis moved')
+                    
+                    
+                else:
+                    print('Connection failure')
+            else:
+                try:
+                    ASI_StageSer.open()
+                except Exception as e:
+                    print('Exception: Opening serial port: '+ str(e))
+
+                if ASI_StageSer.isOpen():
+                    try:
+                        ASI_StageResponse = ASI_StageSer.readline().decode('ascii')
+                        print("response data: " +ASI_StageResponse)
+
+                        showinfo( 
+                        title='Warning', message=f'AZI Stage Control is Off - Turn On Device for Control!'
+                        )
+                        ASI_StageSer.flush()
+                    except Exception as e:
+                        print('Exception: Writing to serial port: '+ str(e))
+                    print('ASI Stage control off')
+                else:
+                    print('Connection failure')
+            self.stop_live()
+
+    #Z control reconstruction live 
+    def z_control_os_sim_live(self):
         z_min_value = 62.9 # to get to the lowest membrane layer of the cell
         z_max_value = 1030.0 # to get to the surface - uppermost layer of the cell
         stepsize = 96.7 # Steps to get 10 slices 
@@ -540,12 +646,15 @@ class ML_App:
                     rchild_min = mp.Value('d',1)
 
                     #updated live view v2
-                    self.live_process = mp.Process(target= asf.live_view_v2, args = (self.stop_signal,
+                    self.live_process = mp.Process(target= asf.live_os_sim_zsection, args = (self.stop_signal,
                     self.output,exposure_time,optosplit,x1,y1,x2,y2,x3,y3,rchild_max,rchild_min,R,G,B))
 
                     self.live_process.start()
                     self.plotting_process = threading.Thread(target= self.plot, args = (child_max,child_min,rchild_max,rchild_min))
                     self.plotting_process.start()
+
+                    if core.is_sequence_running():
+                        core.stop_sequence_acquisition() # stop the camera 
 
                     print("AZI Z Command" + ASI_ZCommand)
                     try:
@@ -555,8 +664,8 @@ class ML_App:
                     except Exception as e:
                         print('Exception: Writing to serial port: '+ str(e))
                     print('ASI Stage Z axis moved')
-                    self.stop_live()
-                    time.sleep(10)
+                    
+                    
                 else:
                     print('Connection failure')
             else:
@@ -579,6 +688,8 @@ class ML_App:
                     print('ASI Stage control off')
                 else:
                     print('Connection failure')
+            self.stop_live()
+
 
     def stop_live(self):
         self.stop_signal.put(False)
@@ -589,6 +700,7 @@ class ML_App:
     def save_image(self):
         print('Save Image Enabled')
         self.save_image_btn["state"] = DISABLED
+		           
 
     def plot(self,child_max,child_min,rchild_max,rchild_min):
         while True: 
@@ -686,7 +798,6 @@ class ML_App:
 
             # else:
                 # print('imArray was empty')
-
 
 if __name__ == '__main__':
     root = tk.Tk()
