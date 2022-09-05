@@ -26,8 +26,8 @@ def GetParams():
   # data
   opt.weights = 'DIV2K_randomised_3x3_20200317.pth' 
   opt.imageSize = 255
-  opt.root = 'C:/Users/ew535/OneDrive - University of Cambridge/images/starfish/good phase/to process'
-  opt.out = 'C:/Users/ew535/OneDrive - University of Cambridge/images/starfish/good phase/ML-SIM'
+  opt.root = 'E:/Tester'
+  opt.out = 'E:/Tester\ML-SIM'
 
   # input/output layer options
   opt.norm = 'minmax' # if normalization should not be used
@@ -144,8 +144,8 @@ def EvaluateModel(opt):
 
                 sub_tensor = torch.from_numpy(stackSubset[opt.nch_in*slice:opt.nch_in*(slice+1)])
                 
-                x_pad = int(np.floor(sub_tensor.shape[2]/2))
-                y_pad = int(np.floor(sub_tensor.shape[1]/2))
+                x_pad = int(np.floor(images.shape[1]/2))
+                y_pad = int(np.floor(images.shape[2]/2))
                 with torch.no_grad():
                     if opt.cpu:
                         sub_tensor = sub_tensor.unsqueeze(0)
@@ -165,13 +165,13 @@ def EvaluateModel(opt):
                         
                         sr = net(sub_tensor)
 
-#                       sr = sr.squeeze(0)
-#                       sr = torch.fft.fft2(sr)
-#                       sr = torch.fft.fftshift(sr)
-#                       sr = F.pad(sr,(x_pad, x_pad, y_pad, y_pad))
-#                       sr = torch.fft.ifft2(torch.fft.ifftshift(sr))
-#                       sr = sr.real                        
-                        sr = sr.cpu()
+                    sr = sr.squeeze(0)
+                    sr = torch.fft.fft2(sr)
+                    sr = torch.fft.fftshift(sr)
+                    sr = F.pad(sr,(x_pad, x_pad, y_pad, y_pad))
+                    sr = torch.fft.ifft2(torch.fft.ifftshift(sr))
+                    sr = sr.real                        
+                    sr = sr.cpu()
 
 
 
@@ -180,10 +180,10 @@ def EvaluateModel(opt):
                     sr_frame = np.squeeze(sr_frame)      
                     #sr_frame = threshold_and_norm(sr_frame)                         
                 # rolling += sr_frame
-                if stack_idx == 0:
-                    reference = np.copy(sr_frame)
-                else: 
-                    sr_frame = match_histograms(sr_frame,reference)
+                #if stack_idx == 0:
+                #    reference = np.copy(sr_frame)
+                #else: 
+                #    sr_frame = match_histograms(sr_frame,reference)
 
             
             try:

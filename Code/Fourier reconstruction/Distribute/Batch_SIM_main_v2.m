@@ -48,15 +48,15 @@ filename='1_X';% the names should be 1_X1, 1_X2, ..., 1_X(a_num*p_num) in this c
 fileformat='tif';
 
 %% parameter of the detection system
-lambda=520;% fluorescence emission wavelength (emission maximum). unit: nm
-psize=85; 
+lambda=590;% fluorescence emission wavelength (emission maximum). unit: nm
+psize=86; 
 % psize=pixel size/magnification power. unit: nm
 NA=1.2;
 
 %% parameter for reconstruction
 wiener_factor=0.05;
 
-mask_factor=0.4;%a high-pass mask (fmask) is utilized to estimate the modulation vector;
+mask_factor=0.5;%a high-pass mask (fmask) is utilized to estimate the modulation vector;
 % the cutoff frequency of fmask is mask_factor*(cutoff frequency of the detection OTF)
 % recommended value: 0.6 for conventional SIM, 0.8 for TIRF-SIM
 
@@ -109,7 +109,7 @@ widefield=widefield.*(widefield>0);
 
 for ii=1:a_num
     for jj=1:p_num
-        %noiseimage(:,:,ii,jj)=quasi_wnr(OTFde,squeeze(noiseimage(:,:,ii,jj)),wiener_factor^2);
+        noiseimage(:,:,ii,jj)=quasi_wnr(OTFde,squeeze(noiseimage(:,:,ii,jj)),wiener_factor^2);
 
         %noiseimage(:,:,ii,jj)=deconvlucy(noiseimage(:,:,ii,jj),ipsfde,3);
         %pre-deconvolution. It can be applied to suppress noises in experiments
