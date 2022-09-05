@@ -509,7 +509,7 @@ class ML_App:
 
             z_axis_value = float(int(z))
 
-            if self.z_button['state']:
+            if self.z_preview_button['state']:
                 try:
                     ASI_StageSer.open()
                 except Exception as e:
@@ -612,7 +612,7 @@ class ML_App:
 
             z_axis_value = float(int(z))
 
-            if self.z_button['state']:
+            if self.z_live_button['state']:
                 try:
                     ASI_StageSer.open()
                 except Exception as e:
@@ -753,8 +753,8 @@ class ML_App:
                         self.save_image_btn["state"] = tk.NORMAL
                     else:
                         #print('Save buttton disabled')
-                        self.save_image_btn["state"] == NORMAL
-                        self.save_image_btn["state"] == tk.NORMAL
+                        self.save_image_btn["state"] = NORMAL
+                        self.save_image_btn["state"] = tk.NORMAL
 
                 elif len(image_array.shape)==3:
                     r = image_array[:,:,0]
@@ -792,8 +792,8 @@ class ML_App:
                         self.save_image_btn["state"] = tk.NORMAL
                     else:
                         #print('Save buttton disabled')
-                        self.save_image_btn["state"] == NORMAL
-                        self.save_image_btn["state"] == tk.NORMAL
+                        self.save_image_btn["state"] = NORMAL
+                        self.save_image_btn["state"] = tk.NORMAL
                     
 
             # else:

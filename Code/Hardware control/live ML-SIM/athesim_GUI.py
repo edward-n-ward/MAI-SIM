@@ -530,6 +530,7 @@ class ML_App:
 
                     # Capture image and save with appropriate label
                     if(self.save_image_btn["state"] == DISABLED):
+                        print('in')
                         now = datetime.now()
                         hr = now.hour
                         min = now.minute
@@ -551,9 +552,9 @@ class ML_App:
                         print('Save button status',self.save_image_btn["state"])
                         self.save_image_btn["state"] = tk.NORMAL
                     else:
-                        print('Save buttton disabled')
-                        self.save_image_btn["state"] == NORMAL
-                        self.save_image_btn["state"] == tk.NORMAL
+                        #print('Save buttton disabled')
+                        self.save_image_btn["state"] = NORMAL
+                        self.save_image_btn["state"] = tk.NORMAL
                 elif len(image_array.shape)==3:
                     r = image_array[:,:,0]
                     g = image_array[:,:,1]
@@ -589,9 +590,9 @@ class ML_App:
                         print('Save button status',self.save_image_btn["state"])
                         self.save_image_btn["state"] = tk.NORMAL
                     else:
-                        print('Save buttton disabled')
-                        self.save_image_btn["state"] == NORMAL
-                        self.save_image_btn["state"] == tk.NORMAL
+                        #print('Save buttton disabled')
+                        self.save_image_btn["state"] = NORMAL
+                        self.save_image_btn["state"] = tk.NORMAL
                     
 
             # else:
