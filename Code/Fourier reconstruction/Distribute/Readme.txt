@@ -7,11 +7,12 @@ images using the inverse matrix approach created by Cao, R et al. [1]
 For a detailed description of the code please refer to the original publication.
 
 This folder includes three ways to run the reconstruction code:
-1) The function SIM_main_v2.m is the originally reported function and should be considered
-the most stable and reliable
+1) The function SIM_main_v2.m is a lightly adapted version of the originally reported 
+function and is likely the most stable and reliable.
 
 2) The function Batch_SIM_main_v2.m includes a handy wrapper around SIM_main_v2.m 
-to enable batch reconstructions of multiple multi-page .tif images
+to enable batch reconstructions of multiple multi-page .tif images although pre-
+and post- processing are not available.
 
 3) The MATLAB app SIMReconstruction.mlapp offers a GUI for running the reconstruction
 and includes code to allow for more advanced SIM data analysis and pre-/post-processing.

@@ -7,7 +7,7 @@ clear all
 a_num=3;% number of pattern orientations
 p_num=3;% phase shift times for each pattern orientation
 
-[file, path] = uigetfile('C:\Users\ew535\OneDrive - University of Cambridge\images\*.tif');
+[file, path] = uigetfile('Path to image stack file');
 filepath=fullfile(path,file);%replace with your file's path
 filename='1_X';% the names should be 1_X1, 1_X2, ..., 1_X(a_num*p_num) in this case;
 fileformat='tif';
@@ -21,16 +21,21 @@ NA=1.2;
 %% parameter for reconstruction
 wiener_factor=0.1;
 
-mask_factor=0.4;%a high-pass mask (fmask) is utilized to estimate the modulation vector;
+out_filt=1;
+
+mask_factor=0.6;%a high-pass mask (fmask) is utilized to estimate the modulation vector;
 % the cutoff frequency of fmask is mask_factor*(cutoff frequency of the detection OTF)
 % recommended value: 0.6 for conventional SIM, 0.8 for TIRF-SIM
+
+% Filter out residual frequency components
+peak_filter = 1;
 
 %% visualization option
 show_initial_result_flag=0;
 % the phase-only correlation result without correction will
 % be displayed when show_initial_result_flag equals 1
 
-show_corrected_result_flag=1;
+show_corrected_result_flag=0;
 % the phase-only correlation result after correction will
 % be displayed when show_corrected_result_flag equals 1
 
@@ -46,6 +51,8 @@ for ii=1:a_num
         
     end
 end
+noiseimage = noiseimage-mode(noiseimage,'all');
+noiseimage(noiseimage<0)=0;
 
 [xsize,ysize]=size(noiseimage(:,:,1,1));
 [Y,X]=meshgrid(1:ysize,1:xsize);
@@ -76,14 +83,15 @@ OTFde=real(fftshift(fft2(ifftshift(ipsfde))));
 clear apsfde ctfde temp X Y
 %% filter/deconvolution before using noiseimage
 widefield=sum(sum(noiseimage,4),3);
-widefield=quasi_wnr(OTFde,widefield,wiener_factor^2);
+% widefield=quasi_wnr(OTFde,widefield,wiener_factor^2);
+widefield=deconvlucy(widefield,ipsfde,3);
 widefield=widefield.*(widefield>0);
 
 for ii=1:a_num
     for jj=1:p_num
-        %noiseimage(:,:,ii,jj)=quasi_wnr(OTFde,squeeze(noiseimage(:,:,ii,jj)),wiener_factor^2);
+   %       noiseimage(:,:,ii,jj)=quasi_wnr(OTFde,squeeze(noiseimage(:,:,ii,jj)),wiener_factor^2);
 
-        %noiseimage(:,:,ii,jj)=deconvlucy(noiseimage(:,:,ii,jj),ipsfde,3);
+          noiseimage(:,:,ii,jj)=deconvlucy(noiseimage(:,:,ii,jj),ipsfde,1);
         %pre-deconvolution. It can be applied to suppress noises in experiments
         
       noiseimage(:,:,ii,jj)=noiseimage(:,:,ii,jj).*(noiseimage(:,:,ii,jj)>0);
@@ -186,8 +194,13 @@ for ii=1:a_num
     end
 
     separated_FT(:,:,ii,1)=re0_temp;
+    if peak_filter == 1
     separated_FT(:,:,ii,2)=rep_temp.*n_filt;
     separated_FT(:,:,ii,3)=rem_temp.*n_filt;
+    else
+    separated_FT(:,:,ii,2)=rep_temp;
+    separated_FT(:,:,ii,3)=rem_temp;
+    end
 end
 
 [~,noise_ratio]=frequency_est_tirf_v2(separated_FT,0.008,fmask,show_corrected_result_flag,mask_factor*cutoff);
@@ -202,12 +215,20 @@ if cutoff+k_modulation_max>min([xsize,ysize])/2
             double_re((xsize-xc+2):(2*xsize-xc+1),(ysize-yc+2):(2*ysize-yc+1),ii,jj)=separated_FT(:,:,ii,jj);
         end
     end
-    clear re_f
+
+
+    widefield_re=zeros(2*xsize,2*ysize);
+    widefield=edgetaper(widefield,PSF_edge);
+    widefield_f=fftshift(fft2(widefield));
+    widefield_re((xsize-xc+2):(2*xsize-xc+1),(ysize-yc+2):(2*ysize-yc+1))=widefield_f;
+    widefield=ifft2(ifftshift(widefield_re));
+    widefield=real(widefield).*(real(widefield>0));
+
+    clear re_f widefield_f
     separated_FT=double_re;
-    clear double_re
+    clear double_re widefield_re
     xsize=2*xsize;
     ysize=2*ysize;
-    widefield=imresize(widefield,2,'bicubic');
     
     [Y,X]=meshgrid(1:ysize,1:xsize);
     xc=floor(xsize/2+1);
@@ -306,16 +327,21 @@ FT_extended_per_angle=sum(ft_true,4);
 FT_extended=sum(FT_extended_per_angle,3);
 reconstructed_im=ifft2(ifftshift(FT_extended));
 reconstructed_im=real(reconstructed_im).*(real(reconstructed_im>0));
-reconstructed_im=deconvlucy(reconstructed_im,psf_n,4);
+
+if out_filt==1
+    reconstructed_im=deconvlucy(reconstructed_im,psf_n,2);
+    reconstructed_im=reconstructed_im.*(reconstructed_im>0);
+end
+
 figure;imagesc(reconstructed_im);colormap(hot);title('SIM');
 
-widefield=deconvlucy(widefield,ipsfde,3);
+% widefield=deconvlucy(widefield,ipsfde,3);
 figure;imagesc(widefield);colormap(hot);title('wide-field');
 
 if save_flag==1
     mytemp=uint16(reconstructed_im./max(reconstructed_im(:))*63000);
-    imwrite(mytemp,hot(256),[path,'SIM.',fileformat],fileformat);
+    imwrite(mytemp,hot(256),[path,'SIM.',fileformat],fileformat,'writemode','append');
 
     mytemp=uint16(widefield./max(widefield(:))*63000);
-    imwrite(mytemp,hot(256),[path,'Widefield.',fileformat],fileformat);
+    imwrite(mytemp,hot(256),[path,'Widefield.',fileformat],fileformat,'writemode','append');
 end
