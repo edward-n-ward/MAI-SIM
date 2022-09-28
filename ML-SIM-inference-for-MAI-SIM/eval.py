@@ -174,7 +174,7 @@ def EvaluateModel(opt):
             try:
                 wf = (wf * 65000/np.amax(wf)).astype('uint16')
                 svPath = opt.out + '/' + filename +'_wf.tif'
-                tifffile.imsave(svPath,wf,append=True)
+                # tifffile.imsave(svPath,wf,append=True)
 
 
                 rolling = (sr_frame * 65000).astype('uint16')

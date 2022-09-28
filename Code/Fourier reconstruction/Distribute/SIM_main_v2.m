@@ -4,34 +4,30 @@ close all;
 clear all
 
 %% read image file
-a_num=3;% number of pattern orientations
-p_num=3;% phase shift times for each pattern orientation
+a_num=3; % number of pattern orientations
+p_num=3; % phase shift times for each pattern orientation
 
-[file, path] = uigetfile('Path to image stack file');
-filepath=fullfile(path,file);%replace with your file's path
-filename='1_X';% the names should be 1_X1, 1_X2, ..., 1_X(a_num*p_num) in this case;
-fileformat='tif';
+[file, path] = uigetfile('');
+
+fileformat='tif'; % Format for output file
 
 %% parameter of the detection system
-lambda=590;% fluorescence emission wavelength (emission maximum). unit: nm
-psize=85; 
-% psize=pixel size/magnification power. unit: nm
-NA=1.2;
+lambda=520; % fluorescence emission wavelength (emission maximum). unit: nm
+psize=85; % psize in nm
+NA=1.2; % Numerical Aperture
 
 %% parameter for reconstruction
-wiener_factor=0.1;
-
+wiener_factor=0.01;
+RLi = 3;
+in_filt =1;
 out_filt=1;
 
-mask_factor=0.6;%a high-pass mask (fmask) is utilized to estimate the modulation vector;
-% the cutoff frequency of fmask is mask_factor*(cutoff frequency of the detection OTF)
-% recommended value: 0.6 for conventional SIM, 0.8 for TIRF-SIM
+mask_factor=0.6; % High pass filter used to search for frequncy bands
+peak_filter = 0; % Filter out residual frequency components
 
-% Filter out residual frequency components
-peak_filter = 1;
-
-%% visualization option
+%% output options
 show_initial_result_flag=0;
+
 % the phase-only correlation result without correction will
 % be displayed when show_initial_result_flag equals 1
 
@@ -39,8 +35,10 @@ show_corrected_result_flag=0;
 % the phase-only correlation result after correction will
 % be displayed when show_corrected_result_flag equals 1
 
-%% saving file
+
 save_flag=1; % save the results if save_flag equals 1;
+
+%% begin reconstruction
 
 for ii=1:a_num
     for jj=1:p_num
@@ -70,6 +68,7 @@ yc=floor(ysize/2+1);% the y-coordinate of the center
 yr=Y-yc;
 xr=X-xc;
 R=sqrt((xr).^2+(yr).^2);% distance between the point (x,y) and center (xc,yc)
+
 %% Generate the PSF
 pixelnum=xsize;
 rpixel=NA*pixelnum*psize/lambda;
@@ -81,24 +80,26 @@ apsfde=fftshift(ifft2(ifftshift(ctfde)));
 ipsfde=ifftscalede*abs(apsfde).^2;
 OTFde=real(fftshift(fft2(ifftshift(ipsfde))));
 clear apsfde ctfde temp X Y
-%% filter/deconvolution before using noiseimage
 widefield=sum(sum(noiseimage,4),3);
-% widefield=quasi_wnr(OTFde,widefield,wiener_factor^2);
-widefield=deconvlucy(widefield,ipsfde,3);
+
+%% filter/deconvolution before using noiseimage
+
+if in_filt ==1
+
+widefield=deconvlucy(widefield,ipsfde,RLi);
 widefield=widefield.*(widefield>0);
 
 for ii=1:a_num
     for jj=1:p_num
-   %       noiseimage(:,:,ii,jj)=quasi_wnr(OTFde,squeeze(noiseimage(:,:,ii,jj)),wiener_factor^2);
 
-          noiseimage(:,:,ii,jj)=deconvlucy(noiseimage(:,:,ii,jj),ipsfde,1);
-        %pre-deconvolution. It can be applied to suppress noises in experiments
-        
+  %    noiseimage(:,:,ii,jj)=quasi_wnr(OTFde,squeeze(noiseimage(:,:,ii,jj)),wiener_factor^2);
+      noiseimage(:,:,ii,jj)=deconvlucy(noiseimage(:,:,ii,jj),ipsfde,RLi);  
       noiseimage(:,:,ii,jj)=noiseimage(:,:,ii,jj).*(noiseimage(:,:,ii,jj)>0);
     end
 end
-widefield=widefield./max(widefield(:))*max(noiseimage(:));
 
+widefield=widefield./max(widefield(:))*max(noiseimage(:));
+end
 
 separated_FT=zeros(xsize,ysize,a_num,3);
 noiseimagef=zeros(size(noiseimage));
@@ -142,14 +143,11 @@ search_range=0.6;%the max radius in the local search algorithm
 %obtain a more precise estimation of the period and the directon of sinusodial pattern
 [ precise_shift,~] = precise_frequency_tirf(noiseimagef,shiftvalue,search_range);
 
-% estimation the phase of each pattern
-% [my_phase] = separation_matrix_correction_v2(noiseimagef,precise_shift,OTFde);
-
 [inv_phase] = separation_matrix_correction_v3(noiseimagef,precise_shift,OTFde);
+
 %% cross-correlation based algorithm
 sigma=0.1;
 % [cc_phase]=crosscorrelation_phase_est_SIM(noiseimagef,precise_shift,sigma,OTFde);
-
 
 %% auto-correlation based algorithm
 auto_phase=zeros(a_num,p_num);
@@ -167,14 +165,14 @@ end
 % my_phase_auto=mod(-auto_phase,2*pi);
 % my_phase_cc=mod(cc_phase,2*pi);
 
-inv_phase=auto_phase;
+% inv_phase=auto_phase;
 % reconstruct with phases determined by the auto-correlation method
 
 % inv_phase=-cc_phase;
 % reconstruct with phases determined by the cross-correlation method
 
 %% separate different frequency component
-% n_filt is a notch-filter
+% n_filt is a notch-filter used to suppress residual striping artefacts 
 n_filt = 1 - exp(-0.05*R.^1.2);
 separated_FT=zeros(xsize,ysize,a_num,3);% store different bands of frequency component
 for ii=1:a_num
@@ -206,6 +204,7 @@ end
 [~,noise_ratio]=frequency_est_tirf_v2(separated_FT,0.008,fmask,show_corrected_result_flag,mask_factor*cutoff);
 
 clear noiseimagef
+
 %% interpolate when necessary
 k_modulation_max=max(sqrt(shiftvalue(:,2,1).^2+shiftvalue(:,2,2).^2));
 if cutoff+k_modulation_max>min([xsize,ysize])/2
@@ -331,11 +330,12 @@ reconstructed_im=real(reconstructed_im).*(real(reconstructed_im>0));
 if out_filt==1
     reconstructed_im=deconvlucy(reconstructed_im,psf_n,2);
     reconstructed_im=reconstructed_im.*(reconstructed_im>0);
+%   widefield=deconvlucy(widefield,ipsfde,3);
 end
 
 figure;imagesc(reconstructed_im);colormap(hot);title('SIM');
 
-% widefield=deconvlucy(widefield,ipsfde,3);
+
 figure;imagesc(widefield);colormap(hot);title('wide-field');
 
 if save_flag==1

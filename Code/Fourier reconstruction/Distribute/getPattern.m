@@ -1,21 +1,5 @@
 % prototype program for SIM reconstruction using inverse matrix based phase estimaton algorithm
-
-close all;
-clear all
-
-%% read image file
-a_num=3;% number of pattern orientations
-p_num=3;% phase shift times for each pattern orientation
-filepath = 'D:\ML-SIM\datasets\TIRF SIM\1.tif';
-
-%% parameter of the detection system
-lambda=590;% fluorescence emission wavelength (emission maximum). unit: nm
-psize=55; 
-NA=1.49;
-
-%% parameter for reconstruction
-iter = 5;
-mask_factor=0.4;
+function patterns=getPattern(a_num, p_num,filepath,lambda,psize,NA,iter,mask_factor,mode)
 
 %% Load images
 edges = linspace(0,2^16,(2^8));
@@ -26,7 +10,7 @@ for ii=1:a_num
         lim = min(X,Y);
         load=load(1:lim,1:lim);
         [counts,edges] = histcounts(load,edges);
-        background = edges(counts==max(counts));
+        background = max(edges(counts==max(counts)));
         load = load-background; load(load<0)=0;
         load = double(65536.*(load./max(load(:))));
         noiseimage(:,:,ii,jj)=load;
@@ -72,6 +56,21 @@ for ii=1:a_num
     end
 end
 widefield=sum(sum(noiseimage,4),3);
+patterns = zeros(size(noiseimage));
+
+for ii=1:a_num
+    for jj=1:p_num
+       patterns(:,:,ii,jj) = noiseimage(:,:,ii,jj)./widefield;
+    end
+end
+
+patterns(isnan(patterns))=1;
+
+% Only execute the following if you want to use the Fourier method to find 
+% excitation patterns
+
+if mode == 2
+
 separated_FT=zeros(xsize,ysize,a_num,3);
 noiseimagef=zeros(size(noiseimage));
 for ii=1:a_num
@@ -134,13 +133,16 @@ end
 % my_phase_cc=mod(cc_phase,2*pi);
 
 % inv_phase=auto_phase;
-patterns = zeros(size(noiseimagef));
+
 xn=xr+xsize/2; xn = 2*pi*xn./max(xn(:));
 yn=yr+ysize/2; yn = 2*pi*yn./max(yn(:));
+
 for a = 1:a_num
     for p =1:p_num
         phase = inv_phase(((a-1)*a_num)+p);
-        patterns(:,:,a,p)=sin(xn*precise_shift(a,2,1)+yn*precise_shift(a,2,2)+phase);
-        imwrite(uint16(65000*patterns(:,:,a,p)),'C:\Users\ew535\Desktop\Reconstruction comparison\patterns.tif','writemode','append');
+        patterns(:,:,a,p)=3+cos(xn*precise_shift(a,2,1)+yn*precise_shift(a,2,2)+phase);
     end
+end
+end
+
 end

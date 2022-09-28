@@ -14,10 +14,7 @@ function and is likely the most stable and reliable.
 to enable batch reconstructions of multiple multi-page .tif images although pre-
 and post- processing are not available.
 
-3) The MATLAB app SIMReconstruction.mlapp offers a GUI for running the reconstruction
-and includes code to allow for more advanced SIM data analysis and pre-/post-processing.
-While this app may be useful it is undergoing continual update and bug fixes and should
-not be consider reliable for all reconstructions/ inputs.
+3) The script blindSIM.m is used to perfrom the blind SIM reconstructions.[2] 
 
 Also included are several helper functions, which can be used to rapidly write large .tif
 files, split multi-colour images acquired with an optosplit and unroll a stack of SIM 
@@ -27,4 +24,7 @@ images acquired with the 12-frame rolling method.
 References:
 
 [1] Ruizhi Cao, Youhua Chen, Wenjie Liu, Dazhao Zhu, Cuifang Kuang, Yingke Xu, and Xu Liu.
-"Inverse matrix based phase estimation algorithm for structured illumination microscopy," Biomed. Opt. Express 9, 5037-5051 (2018)
+"Inverse matrix based phase estimation algorithm for structured illumination microscopy" 
+Biomed. Opt. Express 9, 5037-5051 (2018)
+[2] Labouesse, S. et al. Joint Reconstruction Strategy for Structured Illumination 
+Microscopy With Unknown Illuminations. IEEE Trans. Image Process. 26, 2480–2493 (2017).
