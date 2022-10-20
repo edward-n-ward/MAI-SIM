@@ -116,13 +116,13 @@ class ML_App:
         self.panel.image = img  
         self.panel.place(x=155, y=20)
 
-        imgo = Image.open('C:/Users/SIM_Admin/Documents/GitHub/Code/Hardware control/live ML-SIM/optosplit.jpg')
+        imgo = Image.open('C:/Users/SIM_Admin/Documents/GitHub/MAI-SIM/Code/Hardware control/live ML-SIM/optosplit.jpg')
         test =  ImageTk.PhotoImage(imgo)
         self.optosplit = tk.Label(self.tab2, image=test)
         self.optosplit.image = test  
         self.optosplit.place(x=150, y=20)
 
-        imgo = Image.open('C:/Users/SIM_Admin/Documents/GitHub/Code/Hardware control/live ML-SIM/Clipboard.png')
+        imgo = Image.open('C:/Users/SIM_Admin/Documents/GitHub/MAI-SIM/Code/Hardware control/live ML-SIM/Clipboard.png')
         test =  ImageTk.PhotoImage(imgo)
         self.logo = tk.Label(image=test)
         self.logo.image = test  
